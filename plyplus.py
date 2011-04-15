@@ -1,4 +1,3 @@
-from pprint import pprint
 from itertools import islice
 import re
 
@@ -6,7 +5,7 @@ from ply import lex, yacc
 
 import grammar_parser
 
-from visitors import Visitor, Transformer
+from sexp import Visitor, Transformer, head, tail
 
 # -- Must!
 #TODO: Offer alternatives to PLY facilities: precedence, error, line-count
@@ -90,7 +89,7 @@ class SimplifyGrammar_Visitor(Visitor):
     def _flatten(self, tree, name):
         changed = False
         for i in range(len(tree)-1, 0, -1):   # skips 0
-            if len(tree[i]) and tree[i][0] == name:
+            if len(tree[i]) and head(tree[i]) == name:
                 tree[i:i+1] = tree[i][1:]
                 changed = True
         return changed
@@ -108,7 +107,7 @@ class SimplifyGrammar_Visitor(Visitor):
                 if isinstance(branch, list):
                     self._visit(branch)
              
-            f = getattr(self, tree[0], self.default)
+            f = getattr(self, head(tree), self.default)
             changed = f(tree)
 
     def modtokenlist(self, tree):
@@ -175,7 +174,7 @@ class SimplifyGrammar_Visitor(Visitor):
         self._flatten(tree, 'rule')
 
         for i,child in enumerate(islice(tree,1,None)):
-            if child[0] == 'rules_list':
+            if head(child) == 'rules_list':
                 # found. now flatten
                 new_rules_list = ['rules_list']
                 for option in child[1:]:
@@ -213,13 +212,13 @@ class ToPlyGrammar_Tranformer(Transformer):
     XXX Probably a bad class name
     """
     def rules_list(self, tree):
-        return '\n\t| '.join(tree[1:])
+        return '\n\t| '.join(tail(tree))
 
     def rule(self, tree):
-        return ' '.join(tree[1:])
+        return ' '.join(tail(tree))
 
     def extrule(self, tree):
-        return ' '.join(tree[1:])
+        return ' '.join(tail(tree))
 
     def oper(self, tree):
         return '(%s)%s'%(' '.join(tree[1:-1]), tree[-1])
@@ -237,10 +236,10 @@ class ToPlyGrammar_Tranformer(Transformer):
             return 'token', tree[1], tree[2]
 
     def grammar(self, tree):
-        return tree[1:]
+        return list(tail(tree))
 
     def extgrammar(self, tree):
-        return tree[1:]
+        return list(tail(tree))
 
 
 class SimplifySyntaxTree_Visitor(Visitor):
@@ -248,13 +247,6 @@ class SimplifySyntaxTree_Visitor(Visitor):
         self.rules_to_flatten = set(rules_to_flatten)
         self.rules_to_expand = set(rules_to_expand)
         Visitor.__init__(self)
-
-    #def _flatten(self, tree, name):
-    #    for i in range(len(tree)-1, 0, -1):   # skips 0
-    #        if len(tree[i]) == 1 and isinstance(tree[i], list):
-    #            del tree[i] # removes empty branches
-    #        elif len(tree[i]) and tree[i][0] == name:
-    #            tree[i:i+1] = tree[i][1:]
 
     def _flatten(self, tree):
         for i in range(len(tree)-1, 0, -1):   # skips 0
@@ -265,13 +257,13 @@ class SimplifySyntaxTree_Visitor(Visitor):
             if len(tree[i]) == 1:
                 del tree[i] # removes empty branches
             # -- Is branch same rule as self and the rule should be flattened?
-            elif tree[i][0] == tree[0] and tree[i][0] in self.rules_to_flatten:
+            elif head(tree[i]) == head(tree) and head(tree[i]) in self.rules_to_flatten:
                 assert len(tree[i]), str(tree)
-                tree[i:i+1] = tree[i][1:]
+                tree[i:i+1] = tail(tree[i])
             # -- Should rule be expanded?
-            elif tree[i][0] in self.rules_to_expand:
+            elif head(tree[i]) in self.rules_to_expand:
                 assert len(tree[i]), str(tree)
-                tree[i:i+1] = tree[i][1:]
+                tree[i:i+1] = tail(tree[i])
 
     def default(self, tree):
         self._flatten(tree)
@@ -279,7 +271,7 @@ class SimplifySyntaxTree_Visitor(Visitor):
 
 class TokValue(str):
     #def __repr__(self):
-    #    return repr("%s:%s|%s"%(self.line, self.pos, self))
+    #    return repr("%s:%s|%s"%(self.line, self.column, self))
     pass
 
 class LexerWrapper(object):
@@ -365,17 +357,11 @@ class Grammar(object):
             tab_filename = "parsetab_%s"%str(hash(grammar)%2**32)
             assert isinstance(grammar, str)
 
-        #print "************ OK1 **************"
         grammar_tree = grammar_parser.parse(grammar, debug=debug)
         if not grammar_tree:
             raise Exception("Parse Error")
-        #print "************ OK2 **************"
-        #print 1
-        #pprint(grammar_tree)
 
         grammar_tree = SimplifyGrammar_Visitor('simp_').visit(grammar_tree)
-        #print 2
-        #pprint(grammar_tree)
         ply_grammar_and_code = ToPlyGrammar_Tranformer().transform(grammar_tree)
 
         # code may be omitted
@@ -387,7 +373,6 @@ class Grammar(object):
         ply_grammar = ply_grammar_and_code[0]
         
         for type, name, defin in ply_grammar:
-            #print type, name, defin
             if type=='token':
                 assert defin[0] == "'"
                 assert defin[-1] == "'"
@@ -403,8 +388,6 @@ class Grammar(object):
 
         exec(code)
 
-        from python_indent_postlex import PythonIndentTracker
-
         lexer = lex.lex(module=self)
         lexer = LexerWrapper(lexer, newline_tokens_names = self._newline_tokens, newline_char=self._newline_value, ignore_token_names=self._ignore_tokens)
         if self.lexer_postproc and not ignore_postproc:
@@ -412,7 +395,7 @@ class Grammar(object):
 
         self.lexer = lexer
         if not just_lex:
-            self.parser = yacc.yacc(module=self, debug=True, tabmodule=tab_filename)    # XXX debug=debug
+            self.parser = yacc.yacc(module=self, debug=debug, tabmodule=tab_filename)
 
     def lex(self, text):
         self.lexer.input(text)
@@ -431,12 +414,8 @@ class Grammar(object):
         return tree
 
     def handle_option(self, name, defin):
-        #print "OPT:", name, defin
         if name == '%newline_char':
-            self._newline_value = eval(defin)   # XXX BAD BAD! do it differently
-        elif name == '%ignore': # XXX deprecated?
-            print "%ignore directive is deprecated. Use it as a token modifier." 
-            self.t_ignore = eval(defin)   # XXX BAD BAD! do it differently
+            self._newline_value = eval(defin)   # XXX BAD BAD! I have TODO it differently
         else:
             print "Unknown option:", name
 
@@ -446,7 +425,6 @@ class Grammar(object):
         return token_def[1:-1].replace(r"\'", "'")
 
     def add_token_with_mods(self, name, defin):
-        #re_defin, mod, modtokenlist = defin
         re_defin, token_mods = defin
 
         token_added = False
@@ -469,7 +447,6 @@ class Grammar(object):
                 self.tokens.append(name)
 
                 code = ('\tt.type = self._%s_unless_toks_dict.get(t.value, %r)\n' % (name, name)
-        #               +'\tprint t.type, t.value, self._%s_unless_toks_dict\n'%name
                        +'\treturn t')
                 s = ('def t_%s(self, t):\n\t%s\n%s\nx = t_%s\n'
                     %(name, re_defin, code, name))
@@ -492,8 +469,6 @@ class Grammar(object):
 
         if not token_added:
             self.add_token(name, re_defin)            
-
-        #re_defin = re_defin.replace('\\', '\\\\')
 
     def add_token(self, name, defin):
         self.tokens.append(name)
@@ -518,7 +493,6 @@ class Grammar(object):
             code = '\tp[0] = [%r] + p[1:]' % rule_name
         s = ('def p_%s(p):\n\t%r\n%s\nx = p_%s\n'
             %(rule_name, rule_def, code, rule_name))
-        #print s
         exec(s)
 
         setattr(self, 'p_%s'%rule_name, x)
