@@ -1,0 +1,39 @@
+What is Plyplus?
+
+Plyplus is a python parser built on top of ply, with a slightly different approach to parsing.
+Most parsers work by calling a function for each rule they identify, where you have to process the data and return to the parser. Plyplus parses the entire file into a parse-tree, letting you search and process it using visitors and pattern-matching.
+Plyplus makes two uncommon separations: of code from grammar, and of processing from parsing.
+The result of this approach is (hopefully) a cleaner design, more powerful grammar processing, and a parser which is easier to write and to understand.
+
+   EXAMPLE USAGE
+-----------------
+>>> from plyplus import Grammar
+>>> g = Grammar("start: '\(' name_list (COMMA MUL NAME)? '\)'; @name_list: NAME | name_list COMMA NAME ;  MUL: '\*'; COMMA: ','; NAME: '\w+'; ")
+>>> s_exp = g.parse('(a,b,c,*x)')
+>>> print s_exp
+['start', '(', 'a', ',', 'b', ',', 'c', ',', '*', 'x', ')']
+>>> print [token for token in s_exp[1:] if token.type in 'NAME MUL']
+['a', 'b', 'c', '*', 'x']
+
+Explanation:
+
+Line #2 creates a plyplus grammar object. Here is the grammar again, split apart:
+start: '\(' name_list (COMMA MUL NAME)? '\)';
+@name_list: NAME | name_list COMMA NAME ;
+MUL: '\*';
+COMMA: ',';
+NAME: '\w+'; 
+
+These are five statements. Statements are separated by a semicolon.
+'start' is a rule name. Plyplus always starts with that rule. 'start' depends on 'name_list'.
+name_list is recursive rule. The ampersand before its name tells plyplus to collapse the recursion, so that its matches are all in one list instead of several nested ones.
+MUL, COMMA, and NAME are tokens. All-caps is the convention for tokens. A token is defined with a regular expression.
+It's worth mentioning that 'start' contains anonymous tokens. It's a useful feature for meaningless "marker" tokens.
+
+Line #3 parses the string into an s-exp, which is a list formatted as [rule-name, match-0, match-1 ... match-n]
+Line #4 prints them as they are. Notice that all tokens (including the anonymous tokens ) are still in there.
+Because name_list was flattened, it doesn't appear in the resulting s-exp.
+While they inherit from string, the matching tokens contain extra attributes.
+Line #5 uses the extra 'type' attribute to filter the irrelevant tokens, and provide a clean list of parameters.
+
+As a side note, the parser doesn't play a big part in this example, which could be implemented using only a lexer. However, in this case the parser provides the implicit feature of filtering bad input. Go ahead and try to feed it anything illegal!
