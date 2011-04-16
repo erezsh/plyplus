@@ -17,6 +17,8 @@ tokens = (
         'INTO',
         'LCURLY',
         'RCURLY',
+        'NUMBER',
+        'NUMBERMOD',
 #        'COMMENT',
     )
 
@@ -32,9 +34,10 @@ t_COLON = ':'
 t_SEMICOLON = ';'
 t_REGEXP = r"'.*?[^\\]'"
 t_SECTION = '\#\#\#(.|\\n)*'
-t_INTO = '->'
+t_INTO = '=>'
 t_LCURLY = '{'
 t_RCURLY = '}'
+t_NUMBER = '\^?-?\d+'
 
 
 def t_COMMENT(t):

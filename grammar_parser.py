@@ -63,11 +63,20 @@ def p_optiondef(p):
     """
     p[0] = ['optiondef', p[1], p[3]]
 
+def p_number_list(p):
+    """number_list : NUMBER
+                   | NUMBER number_list"""
+    p[0] = ['number_list'] + p[1:]
 
 def p_rules_list(p):
-    """rules_list   : rule
-                    | rule OR rules_list"""
+    """rules_list   : rule_into
+                    | rule_into OR rules_list"""
     p[0] = ['rules_list'] + [p[1]] + p[3:]
+
+def p_rule_into(p):
+    """rule_into : rule
+                 | rule INTO number_list"""
+    p[0] = ['rule_into'] + [p[1]] + p[3:]
 
 def p_rule(p):
     """rule : expr
@@ -102,7 +111,6 @@ def p_error(p):
 
 start = "extgrammar"
 
-#yacc.yacc(debug=DEBUG)
 _parser = yacc.yacc(debug=DEBUG, tabmodule=YACC_TAB_MODULE)     # Return parser object
 def parse(text, debug=False):
     grammar_lexer.lexer.lineno=1

@@ -203,6 +203,11 @@ def test_python4ply_sample():
     l = g.parse(file(r'python4ply-sample.py').read())
 
 
+def test_into():
+    g = Grammar("start: '\(' name_list (COMMA MUL NAME => 2 3)? '\)' => ^1 ^-1; @name_list: NAME | name_list COMMA NAME => 1 3;  MUL: '\*'; COMMA: ','; NAME: '\w+'; ")
+    assert g.parse('(a,b,c,*x)') == ['start', 'a', 'b', 'c', '*', 'x']
+    assert g.parse('(a,b,c,x)') == ['start', 'a', 'b', 'c', 'x']
+
 if __name__ == '__main__':
     test_python_lex()
     test_python_lex3()
@@ -214,5 +219,4 @@ if __name__ == '__main__':
     test_python_parse2(2)
     test5()
     test4()
-
-
+    test_into()

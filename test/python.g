@@ -340,13 +340,13 @@ DEDENT: '<DEDENT>';
 
 %newline_char: '\n';
 
-//COMMENT: '\#[^\n]*';
+COMMENT: '\#[^\n]*';
 
 ###
 from python_indent_postlex import PythonIndentTracker 
 self.lexer_postproc = PythonIndentTracker
 
-def t_COMMENT(t):   #/* Can I move it back to normal tokens? */
-    '\#[^\n]*';
-    pass
-self.t_COMMENT = t_COMMENT
+#def t_COMMENT(t):   #/* Can I move it back to normal tokens? */
+#    '\#[^\n]*';
+#    pass
+#self.t_COMMENT = t_COMMENT

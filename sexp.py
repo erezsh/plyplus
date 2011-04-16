@@ -19,6 +19,9 @@ class Visitor(object):
         f = getattr(self, head(tree), self.default)
         return f(tree)
 
+    def default(self, tree):
+        return False
+
 class Transformer(object):
     def transform(self, tree):
         return self._transform(tree)
@@ -36,4 +39,7 @@ class Transformer(object):
 
         f = getattr(self, head(tree), self.default)
         return f(tree)
+
+    def default(self, tree):
+        return tree
 

@@ -1,5 +1,5 @@
-from itertools import islice
 import re
+from pprint import pprint
 
 from ply import lex, yacc
 
@@ -65,14 +65,13 @@ class GetTokenDefs_Visitor(Visitor):
     def tokendef(self, tree):
         self.tokendefs[ tree[2] ] = tree[1]
 
-    def default(self, tree):
-        return False
 
 class SimplifyGrammar_Visitor(Visitor):
-    def __init__(self, unique_id):
+    def __init__(self, unique_id, filters):
         self._unique_id = unique_id
         self._count = 0
         self._rules_to_add = []
+        self.filters = filters
 
         self.tokendefs = {} # to be populated at visit
 
@@ -90,7 +89,7 @@ class SimplifyGrammar_Visitor(Visitor):
         changed = False
         for i in range(len(tree)-1, 0, -1):   # skips 0
             if len(tree[i]) and head(tree[i]) == name:
-                tree[i:i+1] = tree[i][1:]
+                tree[i:i+1] = tail(tree[i])
                 changed = True
         return changed
 
@@ -100,21 +99,19 @@ class SimplifyGrammar_Visitor(Visitor):
         return tree
 
     def _visit(self, tree):
-        "_visit simplifies tree as much as possible"
-        changed = True
-        while changed:
-            for branch in islice(tree,1,None):
-                if isinstance(branch, list):
-                    self._visit(branch)
-             
-            f = getattr(self, head(tree), self.default)
-            changed = f(tree)
+        "_visit simplifies the tree as much as possible"
+        # visit until nothing left to change (not the most efficient, but good enough)
+        while Visitor._visit(self, tree):
+            pass
 
     def modtokenlist(self, tree):
         return self._flatten(tree, 'modtokenlist')
 
     def tokenmods(self, tree):
         return self._flatten(tree, 'tokenmods')
+
+    def number_list(self, tree):
+        return self._flatten(tree, 'number_list')
 
     def grammar(self, tree):
         changed = self._flatten(tree, 'grammar')
@@ -126,7 +123,7 @@ class SimplifyGrammar_Visitor(Visitor):
         return changed
 
     def oper(self, tree):
-        operand = tree[1]
+        operand_rule = tree[1]
         operator = tree[2]
         if operator in ('*', '@*'):
             # a : b c* d;
@@ -135,9 +132,8 @@ class SimplifyGrammar_Visitor(Visitor):
             # _c : c _c |;
             new_name = self._get_new_rule_name()
             mod = '@' if operator.startswith('@') else '#'
-            new_rule = ['ruledef', mod+new_name, ['rules_list', ['rule', operand, new_name], ['rule']] ]
+            new_rule = ['ruledef', mod+new_name, ['rules_list', ['rule', operand_rule, new_name], ['rule']] ]
             self._rules_to_add.append(new_rule)
-            #self._rules_to_add.append(['alias', new_name, operator])
             tree[:] = ['rule', new_name]
         elif operator in ('+', '@+'):
             # a : b c+ d;
@@ -146,15 +142,13 @@ class SimplifyGrammar_Visitor(Visitor):
             # _c : c _c | c;
             new_name = self._get_new_rule_name()
             mod = '@' if operator.startswith('@') else '#'
-            new_rule = ['ruledef', mod+new_name, ['rules_list', ['rule', operand], ['rule', new_name, operand]] ]
+            new_rule = ['ruledef', mod+new_name, ['rules_list', ['rule', operand_rule], ['rule', new_name, operand_rule]] ]
             self._rules_to_add.append(new_rule)
-            #self._rules_to_add.append(['alias', new_name, operator])
             tree[:] = ['rule', new_name]
         elif operator == '?':
-            tree[:] = ['rules_list', operand, ['rule']]
-            return True
+            tree[:] = ['rules_list', operand_rule, ['rule']]
         else:
-            assert False, operand
+            assert False, operand_rule
 
         return True # changed
 
@@ -170,17 +164,19 @@ class SimplifyGrammar_Visitor(Visitor):
         #   -->
         # [rules_list [rule [b] [c] [e]] [rule [b] [d] [e]] ]
         #
+        changed = False
 
-        self._flatten(tree, 'rule')
+        if self._flatten(tree, 'rule'):
+            changed = True
 
-        for i,child in enumerate(islice(tree,1,None)):
+        for i,child in enumerate(tail(tree)):
             if head(child) == 'rules_list':
                 # found. now flatten
                 new_rules_list = ['rules_list']
-                for option in child[1:]:
+                for option in tail(child):
                     new_rules_list.append(['rule'])
                     # for each rule in rules_list                
-                    for j,child2 in enumerate(islice(tree,1,None)):
+                    for j,child2 in enumerate(tail(tree)):
                         if j == i:
                             new_rules_list[-1].append(option)
                         else:
@@ -188,7 +184,7 @@ class SimplifyGrammar_Visitor(Visitor):
                 tree[:] = new_rules_list
                 return True # changed
 
-        for i, child in islice(enumerate(tree),1,None):
+        for i, child in tail(enumerate(tree)):
             if isinstance(child, str) and child.startswith("'"):
                 try:
                     tok_name = self.tokendefs[child]
@@ -197,14 +193,28 @@ class SimplifyGrammar_Visitor(Visitor):
                     self.tokendefs[child] = tok_name
                     self._rules_to_add.append(['tokendef', tok_name, child])
                 tree[i] = tok_name
+                changed = True
 
-        return False # Not changed
+        return changed # Not changed
+
+    def rule_into(self, tree):
+        assert 2 <= len(tree) <= 3
+        if len(tree) > 2:
+            rule, filter_list = tree[1], tree[2]
+            new_name = self._get_new_rule_name()
+            new_rule = ['ruledef', '@'+new_name, ['rules_list', ['rule', rule]]]
+            self._rules_to_add.append(new_rule)
+            self.filters[new_name] = (
+                    map(int, (n for n in tail(filter_list) if not n.startswith('^'))),
+                    map(int, (n[1:] for n in tail(filter_list) if n.startswith('^')))
+                )
+            tree[:] = ['rule', new_name]
+            return True
+        else:
+            tree[:] = tree[1]
 
     def rules_list(self, tree):
-        self._flatten(tree, 'rules_list')
-
-    def default(self, tree):
-        return False
+        return self._flatten(tree, 'rules_list')
 
 class ToPlyGrammar_Tranformer(Transformer):
     """Transforms grammar into ply-compliant grammar
@@ -223,11 +233,8 @@ class ToPlyGrammar_Tranformer(Transformer):
     def oper(self, tree):
         return '(%s)%s'%(' '.join(tree[1:-1]), tree[-1])
 
-    def default(self, tree):
-        return tree
-
     def ruledef(self, tree):
-        return 'rule', tree[1], '%s\t: %s'%tuple(tree[1:])
+        return 'rule', tree[1], '%s\t: %s'%(tree[1], tree[2])
 
     def tokendef(self, tree):
         if len(tree) > 3:
@@ -243,9 +250,10 @@ class ToPlyGrammar_Tranformer(Transformer):
 
 
 class SimplifySyntaxTree_Visitor(Visitor):
-    def __init__(self, rules_to_flatten, rules_to_expand):
+    def __init__(self, rules_to_flatten, rules_to_expand, filters):
         self.rules_to_flatten = set(rules_to_flatten)
         self.rules_to_expand = set(rules_to_expand)
+        self.filters = filters
         Visitor.__init__(self)
 
     def _flatten(self, tree):
@@ -266,6 +274,13 @@ class SimplifySyntaxTree_Visitor(Visitor):
                 tree[i:i+1] = tail(tree[i])
 
     def default(self, tree):
+        if head(tree) in self.filters:
+            pos_filter, neg_filter = self.filters[head(tree)]
+            neg_filter = [x if x>=0 else x+len(tree) for x in neg_filter]
+            tree[1:] = [x for i,x in tail(enumerate(tree)) 
+                    if (not pos_filter or i in pos_filter)
+                    and (not neg_filter or i not in neg_filter)
+                ]
         self._flatten(tree)
 
 
@@ -361,7 +376,8 @@ class Grammar(object):
         if not grammar_tree:
             raise Exception("Parse Error")
 
-        grammar_tree = SimplifyGrammar_Visitor('simp_').visit(grammar_tree)
+        self.filters = {}
+        grammar_tree = SimplifyGrammar_Visitor('simp_', self.filters).visit(grammar_tree)
         ply_grammar_and_code = ToPlyGrammar_Tranformer().transform(grammar_tree)
 
         # code may be omitted
@@ -389,7 +405,7 @@ class Grammar(object):
         exec(code)
 
         lexer = lex.lex(module=self)
-        lexer = LexerWrapper(lexer, newline_tokens_names = self._newline_tokens, newline_char=self._newline_value, ignore_token_names=self._ignore_tokens)
+        lexer = LexerWrapper(lexer, newline_tokens_names=self._newline_tokens, newline_char=self._newline_value, ignore_token_names=self._ignore_tokens)
         if self.lexer_postproc and not ignore_postproc:
             lexer = self.lexer_postproc(lexer)
 
@@ -410,7 +426,7 @@ class Grammar(object):
         tree = self.parser.parse(text, lexer=self.lexer)
         if not tree:
             raise Exception("Parse error!")
-        SimplifySyntaxTree_Visitor(self.rules_to_flatten, self.rules_to_expand).visit(tree)
+        SimplifySyntaxTree_Visitor(self.rules_to_flatten, self.rules_to_expand, self.filters).visit(tree)
         return tree
 
     def handle_option(self, name, defin):
@@ -428,13 +444,13 @@ class Grammar(object):
         re_defin, token_mods = defin
 
         token_added = False
-        for token_mod in token_mods[1:]:
-            mod, modtokenlist = token_mod[1:]
+        for token_mod in tail(token_mods):
+            mod, modtokenlist = tail(token_mod)
         
             if mod == '%unless':
                 assert not token_added, "token already added, can't issue %unless"
                 unless_toks_dict = {}
-                for modtoken in modtokenlist[1:]:
+                for modtoken in tail(modtokenlist):
                     assert modtoken[0] == 'token'
                     modtok_name = modtoken[1]
                     modtok_value = modtoken[2]

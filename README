@@ -26,7 +26,7 @@ NAME: '\w+';
 
 These are five statements. Statements are separated by a semicolon.
 'start' is a rule name. Plyplus always starts with that rule. 'start' depends on 'name_list'.
-name_list is recursive rule. The ampersand before its name tells plyplus to collapse the recursion, so that its matches are all in one list instead of several nested ones.
+name_list is recursive rule. The att-sign before its name tells plyplus to collapse the recursion, so that its matches are all in one list instead of several nested ones.
 MUL, COMMA, and NAME are tokens. All-caps is the convention for tokens. A token is defined with a regular expression.
 It's worth mentioning that 'start' contains anonymous tokens. It's a useful feature for meaningless "marker" tokens.
 
