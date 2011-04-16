@@ -9,7 +9,6 @@ from sexp import Visitor, Transformer, head, tail
 
 # -- Must!
 #TODO: Offer alternatives to PLY facilities: precedence, error, line-count
-#TODO: Allow to set output (omit tokens, maybe rules?)
 #TODO: Allow empty rules
 #TODO: Support States
 
@@ -23,7 +22,7 @@ from sexp import Visitor, Transformer, head, tail
 #TODO: Multiply defined tokens (just concatinate with |?)
 
 # -- Unknown status
-#TODO: support ->
+#TODO: better filters
 #TODO: Add token history on parse error
 #TODO: Add rule history on parse error?
 #TODO: Offer mechanisms to easily avoid ambiguity (expr: expr '\+' expr etc.)
@@ -250,10 +249,9 @@ class ToPlyGrammar_Tranformer(Transformer):
 
 
 class SimplifySyntaxTree_Visitor(Visitor):
-    def __init__(self, rules_to_flatten, rules_to_expand, filters):
+    def __init__(self, rules_to_flatten, rules_to_expand):
         self.rules_to_flatten = set(rules_to_flatten)
         self.rules_to_expand = set(rules_to_expand)
-        self.filters = filters
         Visitor.__init__(self)
 
     def _flatten(self, tree):
@@ -274,6 +272,13 @@ class SimplifySyntaxTree_Visitor(Visitor):
                 tree[i:i+1] = tail(tree[i])
 
     def default(self, tree):
+        self._flatten(tree)
+
+class FilterSyntaxTree_Visitor(Visitor):
+    def __init__(self, filters):
+        self.filters = filters
+
+    def default(self, tree):
         if head(tree) in self.filters:
             pos_filter, neg_filter = self.filters[head(tree)]
             neg_filter = [x if x>=0 else x+len(tree) for x in neg_filter]
@@ -281,7 +286,6 @@ class SimplifySyntaxTree_Visitor(Visitor):
                     if (not pos_filter or i in pos_filter)
                     and (not neg_filter or i not in neg_filter)
                 ]
-        self._flatten(tree)
 
 
 class TokValue(str):
@@ -426,7 +430,8 @@ class Grammar(object):
         tree = self.parser.parse(text, lexer=self.lexer)
         if not tree:
             raise Exception("Parse error!")
-        SimplifySyntaxTree_Visitor(self.rules_to_flatten, self.rules_to_expand, self.filters).visit(tree)
+        FilterSyntaxTree_Visitor(self.filters).visit(tree)
+        SimplifySyntaxTree_Visitor(self.rules_to_flatten, self.rules_to_expand).visit(tree)
         return tree
 
     def handle_option(self, name, defin):

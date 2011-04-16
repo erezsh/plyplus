@@ -1,6 +1,20 @@
 import sys
 sys.path.append('..')
 from plyplus import Grammar, TokValue
+from pprint import pprint
+
+# TODO add tests for python versions other than 2.5
+
+FIB = """
+def fib(n):
+    if n <= 1:
+        return 1
+    return fib(
+n-1) + fib(n-2)
+        
+for i in range(11):
+    print fib(i),
+"""
 
 def test():
     #p = grammar_parser.parse(file('sample_grammar.txt').read())
@@ -66,16 +80,7 @@ def test5():
 
 def test_python_lex():
     g = Grammar(file('python.g').read())
-    l = g.lex("""
-def fib(n):
-    if n <= 1:
-        return 1
-    return fib(
-n-1) + fib(n-2)
-        
-for i in range(11):
-    print fib(i),
-""")
+    l = g.lex(FIB)
     for x in l:
         y = x.value
         if isinstance(y, TokValue):
@@ -208,6 +213,29 @@ def test_into():
     assert g.parse('(a,b,c,*x)') == ['start', 'a', 'b', 'c', '*', 'x']
     assert g.parse('(a,b,c,x)') == ['start', 'a', 'b', 'c', 'x']
 
+def test_python_with_filters():
+    g = Grammar(file('python3.g'))
+    #pprint(g.parse('f(1,2,3)\n'))
+    #pprint(g.parse('if a:\n\tb\n'))
+    #pprint(g.parse(FIB))
+    #pprint(g.parse('a or not b and c\n'))
+    pprint(g.parse(file('../plyplus.py').read()))
+
+def test_python_lib_with_filters():
+    import glob, os
+    g = Grammar(file('python3.g'))
+
+    path = 'C:\Python25\Lib'
+    files = glob.glob(path+'\\*.py')
+    start = time.time()
+    for f in files:
+        f2 = os.path.join(path,f)
+        print f2
+        l = g.parse(file(f2).read())
+
+    end = time.time()
+    print "Test3 (%d files), time: "%len(files), end-start, "secs"
+
 if __name__ == '__main__':
     test_python_lex()
     test_python_lex3()
@@ -220,3 +248,5 @@ if __name__ == '__main__':
     test5()
     test4()
     test_into()
+    test_python_with_filters()
+    test_python_lib_with_filters()
