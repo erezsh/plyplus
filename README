@@ -6,7 +6,7 @@ Plyplus makes two uncommon separations: of code from grammar, and of processing 
 The result of this approach is (hopefully) a cleaner design, more powerful grammar processing, and a parser which is easier to write and to understand.
 
    EXAMPLE USAGE
------------------
+--------------------
 >>> from plyplus import Grammar
 >>> g = Grammar("start: '\(' name_list (COMMA MUL NAME)? '\)'; @name_list: NAME | name_list COMMA NAME ;  MUL: '\*'; COMMA: ','; NAME: '\w+'; ")
 >>> s_exp = g.parse('(a,b,c,*x)')
@@ -37,3 +37,20 @@ While they inherit from string, the matching tokens contain extra attributes.
 Line #5 uses the extra 'type' attribute to filter the irrelevant tokens, and provide a clean list of parameters.
 
 As a side note, the parser doesn't play a big part in this example, which could be implemented using only a lexer. However, in this case the parser provides the implicit feature of filtering bad input. Go ahead and try to feed it anything illegal!
+
+    FILTERS
+---------------
+
+Filters are a way to tell pyplus to clean up unwanted rules and tokens from the result.
+Filters are specified in the grammar, by appending the => symbol to a rule, followed by indices of wanted tokens, or carrotted indices of unwanted tokens.
+Not listing any wanted tokens will select all tokens. Not listing any unwanted tokens will have no effect.
+
+Example:
+>>> g = Grammar("""
+    start: '\(' name_list (COMMA MUL NAME => 2 3)? '\)' => ^1 ^-1;
+    @name_list: NAME | name_list COMMA NAME => 1 3;
+    MUL: '\*'; COMMA: ','; NAME: '\w+'; 
+    """)
+>>> print g.parse('(a,b,c,*x)')
+['start', 'a', 'b', 'c', '*', 'x']
+
