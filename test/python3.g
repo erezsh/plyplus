@@ -112,7 +112,7 @@ continue_stmt : CONTINUE => 0;
 //    ;
 
 // Intentionally more flexible than python syntax
-decorator : AT (attrget|funccall|name) NEWLINE ;
+decorator : AT (attrget|funccall|name) NEWLINE => 2;
 
 decorators : decorator@+ ;
 
