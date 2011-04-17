@@ -106,10 +106,13 @@ break_stmt : BREAK ;
 
 continue_stmt : CONTINUE => 0;
 
-  decorator : AT dotted_name NEWLINE    // TODO WRONG! Decorators can be any expression
-    | AT dotted_name LPAR RPAR NEWLINE
-    | AT dotted_name LPAR arglist RPAR NEWLINE
-    ;
+//  decorator : AT dotted_name NEWLINE  // Strict, correct version
+//    | AT dotted_name LPAR RPAR NEWLINE
+//    | AT dotted_name LPAR arglist RPAR NEWLINE
+//    ;
+
+// Intentionally more flexible than python syntax
+decorator : AT (attrget|funccall|name) NEWLINE ;
 
 decorators : decorator@+ ;
 
