@@ -4,6 +4,8 @@ def head(tree):
     return tree[0]
 def tail(tree):
     return islice(tree,1,None)
+def is_sexp(tree):
+    return isinstance(tree, list) and len(tree)
 
 # DFS
 class Visitor(object):
@@ -13,7 +15,7 @@ class Visitor(object):
 
     def _visit(self, tree):
         for branch in tail(tree):
-            if isinstance(branch, list):
+            if is_sexp(branch):
                 self._visit(branch)
 
         f = getattr(self, head(tree), self.default)
@@ -28,14 +30,11 @@ class Transformer(object):
 
     def _transform(self, tree):
         branches = [
-                self._transform(branch)
-                if isinstance(branch, list)
-                else branch
-                for branch
-                in tail(tree)
+                self._transform(branch) if is_sexp(branch) else branch
+                for branch in tail(tree)
             ]
 
-        tree = [tree[0]] + branches
+        tree = [head(tree)] + branches
 
         f = getattr(self, head(tree), self.default)
         return f(tree)

@@ -137,8 +137,8 @@ del_stmt : DEL exprlist ;
     | dotted_as_name dotted_as_names_star
     ;
 
-  @dotted_as_names_star : COMMA dotted_as_name
-    | dotted_as_names_star COMMA dotted_as_name
+  @dotted_as_names_star : COMMA dotted_as_name => 2
+    | dotted_as_names_star COMMA dotted_as_name => 1 3
     ;
 
   dotted_name : NAME
@@ -149,13 +149,10 @@ del_stmt : DEL exprlist ;
     | dotted_name_star DOT NAME
     ;
 
-encoding_decl : NAME
-;
-
-  except_clause : EXCEPT
-    | EXCEPT test
-    | EXCEPT test AS test
-    | EXCEPT test COMMA test
+  except_clause : EXCEPT => 0
+    | EXCEPT test => 2
+    | EXCEPT test AS test => 2 4
+    | EXCEPT test COMMA test => 2 4
     ;
 
   exec_stmt : EXEC expr => 2

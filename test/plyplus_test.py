@@ -1,8 +1,10 @@
 import sys
+import logging
 sys.path.append('..')
 from plyplus import Grammar, TokValue
 from pprint import pprint
 
+logging.basicConfig(level=logging.INFO)
 # TODO add tests for python versions other than 2.5
 
 FIB = """
@@ -24,7 +26,6 @@ def test():
     #pt.visit(FlattenGrammar_Visitor())
     
     g = Grammar(file('sample_grammar.txt').read())
-    #pprint(g.parse(file('sample_input.txt').read()))
     for x in g.parse(file('sample_input.txt').read())[1][1]:
         if isinstance(x, TokValue):
             tok = x
@@ -57,16 +58,15 @@ def test3():
     # Multiple parsers and colliding tokens
     g = Grammar("start: B A ; B: '12'; A: '1'; ")
     g2 = Grammar("start: B A; B: '12'; A: '2'; ")
-    #print g.parse('aaabaab')
-    print g.parse('121')
-    print g2.parse('122')
+    assert g.parse('121') == ['start', '12', '1']
+    assert g2.parse('122') == ['start', '12', '2']
 
 def test4():
     g = Grammar("start: '\(' name_list (COMMA MUL NAME)? '\)'; @name_list: NAME | name_list COMMA NAME ;  MUL: '\*'; COMMA: ','; NAME: '\w+'; ")
-    print g.parse('(a,b,c,*x)')
+    l = g.parse('(a,b,c,*x)')
     
     g = Grammar("start: '\(' name_list (COMMA MUL NAME)? '\)'; @name_list: NAME | name_list COMMA NAME ;  MUL: '\*'; COMMA: ','; NAME: '\w+'; ")
-    print g.parse('(a,b,c,*x)')
+    assert l == g.parse('(a,b,c,*x)')
 
 
 def test5():
@@ -78,22 +78,19 @@ def test5():
 
 
 
-def test_python_lex():
+def test_python_lex(code=FIB, expected=54):
     g = Grammar(file('python.g').read())
-    l = g.lex(FIB)
+    l = g.lex(code)
     for x in l:
         y = x.value
         if isinstance(y, TokValue):
-            print y.type, y, y.line, y.column
-            pass
+            logging.debug('%s %s %s', y.type, y, y.line, y.column)
         else:
-            print x.type, x.value
-            pass
-
+            logging.debug('%s %s', x.type, x.value)
+    assert len(l) == expected, len(l)
 
 def test_python_lex2():
-    g = Grammar(file('python.g').read())
-    l = g.lex("""
+    test_python_lex(code="""
 def add_token():
     a
 # hello
@@ -101,38 +98,20 @@ def add_token():
 # hello
     setattr(self, b)
 
-        """)
-    for x in l:
-        y = x.value
-        if isinstance(y, TokValue):
-            print y.type, y, y.line, y.column
-            pass
-        else:
-            print x.type, x.value
-            pass
+        """, expected=26)
 
 def test_python_lex3():
-    g = Grammar(file('python.g').read())
-    l = g.lex("""
+    test_python_lex("""
 def test2():
     sexp = ['start',
              ]
-        """)
-    for x in l:
-        y = x.value
-        if isinstance(y, TokValue):
-            print y.type, y, y.line, y.column
-        else:
-            print x.type, x.value
-
+        """, expected=18)
 
 python_g_file = 'python2.g'
 
 import time
 def test_python_parse():
     g = Grammar(file(python_g_file))
-    #print "Start"
-    #l = g.parse(file('python_sample1.py').read())
     if 1:
         start = time.time()
         l = g.parse(file('python_sample1.py').read())
@@ -148,8 +127,7 @@ def test_python_parse():
 
         l = g.parse("c,d=x,y=a+b\nc,d=a,b\n")
         end = time.time()
-        #print "End"
-        print "Time: ", end-start, "secs"
+        logging.info("Time: %s secs " % (end-start))
 
     l = g.parse(file(r'C:\Python25\Lib\os.py').read())
     l = g.parse(file(r'C:\Python25\Lib\pydoc.py').read())
@@ -181,11 +159,7 @@ def eggs9():
     else:
         assert False
 
-    print s
-    #for i in  g.lex(s):
-    #    print i
-
-    print g.parse(s)
+    logging.debug( g.parse(s) )
 
 
 def test_python_parse3():
@@ -197,11 +171,11 @@ def test_python_parse3():
     start = time.time()
     for f in files:
         f2 = os.path.join(path,f)
-        print f2
+        logging.info( f2 )
         l = g.parse(file(f2).read())
 
     end = time.time()
-    print "Test3 (%d files), time: "%len(files), end-start, "secs"
+    logging.info( "Test3 (%d files), time: %s secs"%(len(files), end-start) )
 
 def test_python4ply_sample():
     g = Grammar(file(python_g_file))
@@ -212,7 +186,7 @@ def test_into():
     g = Grammar("start: '\(' name_list (COMMA MUL NAME => 2 3)? '\)' => ^1 ^-1; @name_list: NAME | name_list COMMA NAME => 1 3;  MUL: '\*'; COMMA: ','; NAME: '\w+'; ")
     assert g.parse('(a,b,c,*x)') == ['start', 'a', 'b', 'c', '*', 'x']
     assert g.parse('(a,b,c,x)') == ['start', 'a', 'b', 'c', 'x']
-
+#
 def test_python_with_filters():
     g = Grammar(file('python3.g'))
     #pprint(g.parse('f(1,2,3)\n'))
@@ -234,19 +208,21 @@ def test_python_lib_with_filters():
         l = g.parse(file(f2).read())
 
     end = time.time()
-    print "Test3 (%d files), time: "%len(files), end-start, "secs"
+    logging.info("Test3 (%d files), time: %s secs"%(len(files), end-start))
 
 if __name__ == '__main__':
-    #test_python_lex()
-    #test_python_lex3()
-    #test_python_parse()
-    #test_python_parse3()
-    #test_python4ply_sample()
-    #test_python_parse2(0)
-    #test_python_parse2(1)
-    #test_python_parse2(2)
-    #test5()
-    #test4()
-    #test_into()
-    test_python_with_filters()
+    test_python_lex()
+    test_python_lex2()
+    test_python_lex3()
+    test_python_parse()
+    test_python_parse2(0)
+    test_python_parse2(1)
+    test_python_parse2(2)
+    test_python_parse3()
+    test_python4ply_sample()
+    test3()
+    test4()
+    test5()
+    test_into()
+    #test_python_with_filters()
     #test_python_lib_with_filters()

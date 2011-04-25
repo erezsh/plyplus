@@ -5,7 +5,7 @@ from ply import lex, yacc
 
 import grammar_parser
 
-from sexp import Visitor, Transformer, head, tail
+from sexp import Visitor, Transformer, head, tail, is_sexp
 
 # -- Must!
 #TODO: Offer alternatives to PLY facilities: precedence, error, line-count
@@ -256,7 +256,7 @@ class SimplifySyntaxTree_Visitor(Visitor):
 
     def _flatten(self, tree):
         for i in range(len(tree)-1, 0, -1):   # skips 0
-            if not isinstance(tree[i], list):
+            if not is_sexp(tree[i]):
                 continue
             assert len(tree[i])
             # -- Is empty branch? (list with len=1)
@@ -456,9 +456,8 @@ class Grammar(object):
                 assert not token_added, "token already added, can't issue %unless"
                 unless_toks_dict = {}
                 for modtoken in tail(modtokenlist):
-                    assert modtoken[0] == 'token'
-                    modtok_name = modtoken[1]
-                    modtok_value = modtoken[2]
+                    assert head(modtoken) == 'token'
+                    modtok_name, modtok_value = tail(modtoken)
 
                     self.add_token(modtok_name, modtok_value)
                      
