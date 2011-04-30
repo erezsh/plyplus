@@ -42,3 +42,18 @@ class Transformer(object):
     def default(self, tree):
         return tree
 
+
+class _Finder(Visitor):
+    def __init__(self, rules, target_list):
+        self.rules = set(rules)
+        self.l = target_list
+
+    def default(self, tree):
+        if head(tree) in self.rules:
+            self.l.append(tree)
+
+def find(tree, *rules):
+    result = []
+    _Finder(rules, result).visit(tree)
+    return result
+    

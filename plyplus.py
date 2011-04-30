@@ -1,5 +1,4 @@
 import re
-from pprint import pprint
 
 from ply import lex, yacc
 
@@ -11,18 +10,20 @@ from sexp import Visitor, Transformer, head, tail, is_sexp
 #TODO: Offer alternatives to PLY facilities: precedence, error, line-count
 #TODO: Allow empty rules
 #TODO: Support States
-#TODO: a* is very slow. Optimize it.
 
 # -- Nice to have
 #TODO: find better terms than expand and flatten
 #TODO: rename simps
 #TODO: meaningful names to anonymous tokens
 #TODO: Exact recovery of input (as text attr)
+#      Allow to reconstruct the input with whatever changes were made to the tree
 #TODO: Allow 'optimize' mode
 #TODO: Rule Self-recursion (an operator? a 'self' keyword?)
 #TODO: Multiply defined tokens (just concatinate with |?)
 
 # -- Unknown status
+#TODO: Complete EOF handling in python grammar (postlex)
+#TODO: Make filter behaviour consitent for both ()? and ()* / ()+
 #TODO: a (b c d => 1 2) e
 #TODO: (a+)? is different from a*
 #       print_stmt : PRINT (RIGHTSHIFT? test (COMMA test)* COMMA?)?  ;
@@ -38,7 +39,6 @@ from sexp import Visitor, Transformer, head, tail, is_sexp
 #TODO: Add token history on parse error
 #TODO: Add rule history on parse error?
 #TODO: Offer mechanisms to easily avoid ambiguity (expr: expr '\+' expr etc.)
-#TODO: Allow to reconstruct the input with whatever changes were made to the tree
 #TODO: Change rule+ into "rule simp*" instead of "simp+"
 #TODO: Use PLY's ignore mechanism (=tokens return None) instead of post-filtering it myself?
 
@@ -50,9 +50,6 @@ from sexp import Visitor, Transformer, head, tail, is_sexp
 #DONE: anonymous tokens
 #DONE: Resolve errors caused by dups of tokens
 #DONE: Allow comments in grammar
-
-TAB_LEN = 4
-
 
 #----------------------------------------------------------------------
 # Known Issue! -- Bad Rule Handling on Repitition (TODO)
@@ -78,11 +75,13 @@ class GetTokenDefs_Visitor(Visitor):
 
 
 class SimplifyGrammar_Visitor(Visitor):
-    def __init__(self, unique_id, filters):
+    def __init__(self, unique_id, filters, expand_all_repeaters=False):
         self._unique_id = unique_id
         self._count = 0
         self._rules_to_add = []
         self.filters = filters
+
+        self.default_rule_mod = '@' if expand_all_repeaters else '#'
 
         self.tokendefs = {} # to be populated at visit
 
@@ -144,8 +143,8 @@ class SimplifyGrammar_Visitor(Visitor):
             #  --> in practice (much faster with PLY, approx x2)
             # a : b _c d | b d;
             # _c : _c c | c;
-            new_name = self._get_new_rule_name()
-            mod = '@' if operator.startswith('@') else '#'
+            new_name = self._get_new_rule_name() + '_star'
+            mod = '@' if operator.startswith('@') else self.default_rule_mod
             new_rule = ['ruledef', mod+new_name, ['rules_list', ['rule', rule_operand], ['rule', new_name, rule_operand]] ]
             self._rules_to_add.append(new_rule)
             tree[:] = ['rules_list', ['rule', new_name], ['rule']]
@@ -154,8 +153,8 @@ class SimplifyGrammar_Visitor(Visitor):
             #  -->
             # a : b _c d;
             # _c : _c c | c;
-            new_name = self._get_new_rule_name()
-            mod = '@' if operator.startswith('@') else '#'
+            new_name = self._get_new_rule_name() + '_plus'
+            mod = '@' if operator.startswith('@') else self.default_rule_mod
             new_rule = ['ruledef', mod+new_name, ['rules_list', ['rule', rule_operand], ['rule', new_name, rule_operand]] ]
             self._rules_to_add.append(new_rule)
             tree[:] = ['rule', new_name]
@@ -203,7 +202,7 @@ class SimplifyGrammar_Visitor(Visitor):
                 try:
                     tok_name = self.tokendefs[child]
                 except KeyError:
-                    tok_name = self._get_new_tok_name()
+                    tok_name = self._get_new_tok_name() # Add anonymous token
                     self.tokendefs[child] = tok_name
                     self._rules_to_add.append(['tokendef', tok_name, child])
                 tree[i] = tok_name
@@ -211,7 +210,7 @@ class SimplifyGrammar_Visitor(Visitor):
 
         return changed # Not changed
 
-    def rule_into(self, tree):
+    def rule_into(self, tree):  # XXX deprecated?
         assert 2 <= len(tree) <= 3
         if len(tree) > 2:
             rule, filter_list = tree[1], tree[2]
@@ -302,6 +301,11 @@ class FilterSyntaxTree_Visitor(Visitor):
                     and (not neg_filter or i not in neg_filter)
                 ]
 
+class FilterTokens_Tranformer(Transformer):
+    def default(self, tree):
+        if len(tree) <= 2:
+            return tree
+        return [tree[0]] + [x for x in tail(tree) if is_sexp(x)]
 
 class TokValue(str):
     #def __repr__(self):
@@ -374,7 +378,7 @@ class LexerWrapper(object):
 
 class Grammar(object):
 
-    def __init__(self, grammar, debug=False, just_lex=False, ignore_postproc=False):
+    def __init__(self, grammar, debug=False, just_lex=False, ignore_postproc=False, filter_tokens=False, expand_all_repeaters=False):
         self.tokens = []    # for lex module
         self.rules_to_flatten = []
         self.rules_to_expand = []
@@ -382,21 +386,23 @@ class Grammar(object):
         self._ignore_tokens = set()
         self.lexer_postproc = None
         self._newline_value = '\n'
+        self.filter_tokens = filter_tokens
+        self.expand_all_repeaters = expand_all_repeaters
 
         if isinstance(grammar, file):
             # PLY turns "a.b" into "b", so gotta get rid of the dot.
             tab_filename = "parsetab_%s"%grammar.name.replace('.', '_')
             grammar = grammar.read()
         else:
-            tab_filename = "parsetab_%s"%str(hash(grammar)%2**32)
             assert isinstance(grammar, str)
+            tab_filename = "parsetab_%s"%str(hash(grammar)%2**32)
 
         grammar_tree = grammar_parser.parse(grammar, debug=debug)
         if not grammar_tree:
             raise Exception("Parse Error")
 
         self.filters = {}
-        grammar_tree = SimplifyGrammar_Visitor('simp_', self.filters).visit(grammar_tree)
+        grammar_tree = SimplifyGrammar_Visitor('simp_', self.filters, expand_all_repeaters=expand_all_repeaters).visit(grammar_tree)
         ply_grammar_and_code = ToPlyGrammar_Tranformer().transform(grammar_tree)
 
         # code may be omitted
@@ -445,7 +451,10 @@ class Grammar(object):
         tree = self.parser.parse(text, lexer=self.lexer)
         if not tree:
             raise Exception("Parse error!")
-        FilterSyntaxTree_Visitor(self.filters).visit(tree)
+        if self.filters:
+            FilterSyntaxTree_Visitor(self.filters).visit(tree)
+        if self.filter_tokens:
+            tree = FilterTokens_Tranformer().transform(tree)
         SimplifySyntaxTree_Visitor(self.rules_to_flatten, self.rules_to_expand).visit(tree)
         return tree
 

@@ -67,6 +67,11 @@ class PythonIndentTracker:
                 
             assert self.indent_level == [0], self.indent_level
 
+            self.token_queue.append( None )
+            #eof = Tok(lexer=self.lexer)
+            #eof.type = 'EOF'
+            #eof.value = '<EOF>'
+            #return eof
             return None
 
         # -- Regular token --

@@ -58,8 +58,10 @@ def test3():
     # Multiple parsers and colliding tokens
     g = Grammar("start: B A ; B: '12'; A: '1'; ")
     g2 = Grammar("start: B A; B: '12'; A: '2'; ")
-    assert g.parse('121') == ['start', '12', '1']
-    assert g2.parse('122') == ['start', '12', '2']
+    x = g.parse('121')
+    assert x == ['start', '12', '1'], x
+    x = g2.parse('122')
+    assert x == ['start', '12', '2'], x
 
 def test4():
     g = Grammar("start: '\(' name_list (COMMA MUL NAME)? '\)'; @name_list: NAME | name_list COMMA NAME ;  MUL: '\*'; COMMA: ','; NAME: '\w+'; ")
@@ -187,6 +189,13 @@ def test_into():
     assert g.parse('(a,b,c,*x)') == ['start', 'a', 'b', 'c', '*', 'x']
     assert g.parse('(a,b,c,x)') == ['start', 'a', 'b', 'c', 'x']
 #
+
+def test_python_into():
+    g = Grammar(file('python3.g'))
+    #print g.parse('exec a in b, c\n')
+    #print g.parse('global a, b, c\n')
+    #print g.parse('exec a in b, c\n')
+
 def test_python_with_filters():
     g = Grammar(file('python3.g'))
     #pprint(g.parse('f(1,2,3)\n'))
@@ -194,6 +203,13 @@ def test_python_with_filters():
     #pprint(g.parse(FIB))
     #pprint(g.parse('a or not b and c\n'))
     pprint(g.parse(file('../plyplus.py').read()))
+
+def test_filtered_python():
+    g = Grammar(file('python3.g'), filter_tokens=True, expand_all_repeaters=True)
+    r = g.parse(file('../plyplus.py').read())
+    #pprint()
+    from sexp import find
+    print [x[1] for x in find(r, 'decorator')]
 
 def test_python_lib_with_filters(path = 'C:\Python25\Lib'):
     import glob, os
@@ -210,6 +226,11 @@ def test_python_lib_with_filters(path = 'C:\Python25\Lib'):
     logging.info("Test3 (%d files), time: %s secs"%(len(files), end-start))
 
 if __name__ == '__main__':
+    #test_python_into()
+    test_filtered_python()
+    sys.exit()
+
+
     test_python_lex()
     test_python_lex2()
     test_python_lex3()

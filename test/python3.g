@@ -1,7 +1,5 @@
-start: file_input;
+start: (NEWLINE|stmt)+;
 //module_header: string NEWLINE;
-
-  @file_input : file_input? (NEWLINE|stmt) ;
 
 //
 //     STATEMENTS
@@ -9,7 +7,7 @@ start: file_input;
 
   @stmt : simple_stmt | compound_stmt ;
 
-  @simple_stmt : small_stmt (SEMI small_stmt)+? SEMI? NEWLINE;
+  @simple_stmt : small_stmt (SEMI small_stmt)+? SEMI? (NEWLINE|EOF);
 
   @small_stmt : expr_stmt
     | assign_stmt
@@ -22,7 +20,6 @@ start: file_input;
     | exec_stmt
     | assert_stmt
     ;
-
 
   @compound_stmt : if_stmt
     | while_stmt
@@ -37,61 +34,49 @@ start: file_input;
 
   assign_stmt : testlist (EQUAL (yield_expr|testlist))+ ;
   augassign_stmt : testlist augassign_symbol (testlist|yield_expr) ;
-  augassign_symbol : PLUSEQUAL
-    | MINEQUAL
-    | STAREQUAL
-    | SLASHEQUAL
-    | PERCENTEQUAL
-    | AMPEREQUAL
-    | VBAREQUAL
-    | CIRCUMFLEXEQUAL
-    | LEFTSHIFTEQUAL
-    | RIGHTSHIFTEQUAL
-    | DOUBLESTAREQUAL
-    | DOUBLESLASHEQUAL
+
+  assert_stmt : ASSERT test (COMMA test)?;
+  del_stmt : DEL exprlist;
+
+  global_stmt : GLOBAL name (COMMA name)@*;
+
+  exec_stmt : EXEC expr (IN test (COMMA test)?)? ;
+
+  print_stmt : PRINT ((print_into COMMA)? test (COMMA test)+? COMMA?)? 
+    | PRINT print_into
     ;
-
-  assert_stmt : ASSERT test (COMMA test => 2)? => 2 3 ;
-  del_stmt : DEL exprlist => 2;
-
-  global_stmt : GLOBAL NAME (COMMA NAME => 2)* => 2 3;
-
-  exec_stmt : EXEC expr (IN test (COMMA test)?)? => 2 4 6 ;
-
-  print_stmt : PRINT (RIGHTSHIFT? test (COMMA test)+? COMMA?)?  ;
+  print_into : RIGHTSHIFT test;
 
   import_stmt :
       IMPORT dotted_as_name (COMMA dotted_as_name)*
     | FROM (dotted_name|DOT+ dotted_name?)
-      IMPORT (STAR|import_as_names|LPAR import_as_names RPAR)
+      IMPORT (import_all|import_as_names|LPAR import_as_names RPAR)
     ;
+  import_all: STAR;
 
-  dotted_as_name : dotted_name (AS NAME)?  ;
+  dotted_as_name : dotted_name (AS name)?  ;
 
   import_as_names : import_as_name (COMMA import_as_name)* COMMA?  ;
-  import_as_name : NAME (AS NAME)?  ;
+  import_as_name : name (AS name)?  ;
 
-  dotted_name : NAME (DOT NAME)* ;
+  dotted_name : name (DOT name)* ;
 
 
 // definitions
-  funcdef : decorators? (DEF NAME parameters COLON suite => 2 3 5) ;
-  classdef : CLASS NAME (LPAR testlist? RPAR)? COLON suite ;
+  funcdef : decorators? DEF name parameters COLON suite ;
+  classdef : CLASS name (LPAR testlist? RPAR)? COLON suite ;
 
 // compound flow statements
-  while_stmt : WHILE test COLON suite (ELSE COLON suite)? => 2 4 7 ;
+  while_stmt : WHILE test COLON suite else_stmt? ;
   with_stmt : WITH test (AS expr)? COLON suite;
-  if_stmt : IF test COLON suite (ELIF test COLON suite)* (ELSE COLON suite)? ;
-  for_stmt : FOR exprlist IN testlist COLON suite (ELSE COLON suite)? ;
-  try_stmt : TRY COLON suite
-        (EXCEPT (test ((AS|COMMA) test)?)? COLON suite)+
-        (ELSE COLON suite)?
-        (FINALLY COLON suite)?
-    | TRY COLON suite FINALLY COLON suite
-    ;
+  if_stmt : IF test COLON suite (ELIF test COLON suite)* else_stmt? ;
+  for_stmt : FOR exprlist IN testlist COLON suite else_stmt? ;
+  try_stmt : TRY COLON suite (except_stmt@+ else_stmt?  finally_stmt? | finally_stmt );
+  except_stmt : (EXCEPT (test ((AS|COMMA) test)?)? COLON suite);
+  else_stmt : ELSE COLON suite;
+  finally_stmt : FINALLY COLON suite;
 
 // simple flow statements
-
   @flow_stmt : break_stmt
     | continue_stmt
     | return_stmt
@@ -100,11 +85,11 @@ start: file_input;
     | pass_stmt
     ;
 
-  break_stmt : BREAK => 0;
-  continue_stmt : CONTINUE => 0;
-  pass_stmt : PASS => 0;
+  break_stmt : BREAK;
+  continue_stmt : CONTINUE;
+  pass_stmt : PASS;
   raise_stmt : RAISE (test (COMMA test (COMMA test)?)?)? ;
-  return_stmt : RETURN testlist? => 2;
+  return_stmt : RETURN testlist?;
   yield_stmt : yield_expr ;
 
 // suites (auxiliary)
@@ -119,7 +104,7 @@ start: file_input;
 //    ;
 
 // Intentionally more flexible than python syntax
-decorator : AT (attrget|funccall|name) NEWLINE => 2;
+decorator : AT (attrget|funccall|name) NEWLINE;
 decorators : decorator@+ ;
 
 //
@@ -129,55 +114,42 @@ decorators : decorator@+ ;
   ?or_test : and_test (OR and_test)* ;
   ?and_test : not_test (AND not_test)* ;
   @not_test : not_expr | comparison ;
-  not_expr : NOT not_test => 2;
+  not_expr : NOT not_test;
   ?comparison : expr (compare_symbol expr)*  ;
   ?expr : xor_expr (VBAR xor_expr)* ;
   ?xor_expr : and_expr (CIRCUMFLEX and_expr)* ;
   ?and_expr : shift_expr (AMPER shift_expr)* ;
-  ?shift_expr : arith_expr ((LEFTSHIFT|RIGHTSHIFT) arith_expr)* ;
-  ?arith_expr : term ((PLUS|MINUS) term)* ;
+  ?shift_expr : arith_expr (shift_symbol arith_expr)* ;
+  ?arith_expr : term (add_symbol term)* ;
 
 
   arglist : (argument COMMA)+?
           ( argument COMMA?
-          | STAR test (COMMA DOUBLESTAR test)?
-          | DOUBLESTAR test
+          | args (COMMA kwargs)?
+          | kwargs
           ) ;
 
 // XXX Overly permissive? (maybe gen_for belongs in arglist)
   @argument : test (|gen_for|EQUAL test) ;
 
-  compare_symbol : LESS
-    | GREATER
-    | EQEQUAL
-    | GREATEREQUAL
-    | LESSEQUAL
-    | NOTEQUAL
-    | IN
-    | NOT IN
-    | IS
-    | IS NOT
-    ;
-
   exprlist : expr (COMMA expr)* COMMA? ;
 
-  ?factor : PLUS factor
-    | MINUS factor
-    | TILDE factor
+  ?factor : add_symbol factor
+    | binary_not
     | power
     | molecule
     ;
 
-  fpdef : NAME
-    | LPAR fplist RPAR
-    ;
+  binary_not: TILDE factor;
 
-  fplist : fpdef (COMMA fpdef)* COMMA? ;
+  fpdef : name
+    | LPAR fpdef (COMMA fpdef)* COMMA? RPAR
+    ;
 
   lambdef : LAMBDA varargslist? COLON test ;
 
-  old_lambdef : LAMBDA varargslist? COLON old_test ;
-  old_test : or_test | old_lambdef ;
+  old_lambdef : LAMBDA varargslist? COLON stunted_test ;
+  stunted_test : or_test | old_lambdef ;
 
   parameters : LPAR varargslist? RPAR ;
 
@@ -192,9 +164,9 @@ decorators : decorator@+ ;
 
   funccall : molecule LPAR arglist? RPAR ;
 
-  itemget : molecule LSQB subscriptlist RSQB => 1 3;
+  itemget : molecule LSQB subscriptlist RSQB;
 
-  attrget : molecule DOT NAME => 1 3;
+  attrget : molecule DOT name;
 
   subscript : DOT DOT DOT
     | test
@@ -204,7 +176,7 @@ decorators : decorator@+ ;
 
   subscriptlist : subscript (COMMA subscript)* COMMA? ;
 
-  ?term : factor ((STAR|SLASH|PERCENT|DOUBLESLASH) factor)* ;
+  ?term : factor (term_symbol factor)* ;
 
   ?test : or_test
     | or_test IF or_test ELSE test
@@ -212,15 +184,15 @@ decorators : decorator@+ ;
     ;
 
   ?testlist : test testlist_star? COMMA? ;
-  testlist1 : test testlist_star?  ;
+  testlist1 : test testlist_star? ;
   @testlist_star : testlist_star? COMMA test ;
 
   varargslist : vararg (COMMA vararg)+?
-            ((COMMA STAR NAME)? (COMMA DOUBLESTAR NAME)?
+            ((COMMA args_decl)? (COMMA kwargs_decl)?
             |COMMA
             )
-    | STAR NAME (COMMA DOUBLESTAR NAME)?
-    | DOUBLESTAR NAME
+    | args_decl (COMMA kwargs_decl)?
+    | kwargs_decl
     ;
 
 vararg : fpdef (EQUAL test)? ;
@@ -240,35 +212,72 @@ vararg : fpdef (EQUAL test)? ;
 // [1, 2]
 
 tuple : LPAR tuplemaker? RPAR ;
-tuplemaker : test (gen_for | (COMMA test)+? COMMA?) ;
+@tuplemaker : test (gen_for | (COMMA test)+? COMMA?) ;
 gen_for : FOR exprlist IN or_test gen_iter?  ;
-gen_if : IF old_test gen_iter?  ;
+gen_if : IF stunted_test gen_iter?  ;
 gen_iter : gen_for | gen_if ;
  
 list : LSQB listmaker? RSQB ;
-listmaker : test (list_for | (COMMA test)+? COMMA?) ;
-list_for : FOR exprlist IN testlist_safe list_iter?  ;
-list_if : IF old_test list_iter?  ;
+@listmaker : test (list_for | (COMMA test)+? COMMA?) ;
+list_for : FOR exprlist IN stunted_testlist list_iter?  ;
+list_if : IF stunted_test list_iter?  ;
 list_iter : list_for | list_if ;
-testlist_safe : old_test ((COMMA old_test)+ COMMA?)? ;
+stunted_testlist : stunted_test ((COMMA stunted_test)+ COMMA?)? ;
 
 dict : LBRACE dictmaker? RBRACE ;
-dictmaker : test COLON test (COMMA test COLON test)+? COMMA? ;
+@dictmaker : test COLON test (COMMA test COLON test)+? COMMA? ;
 
-set : LBRACE listmaker RBRACE => 2;
+set : LBRACE listmaker RBRACE;
 
-repr : BACKQUOTE testlist1 BACKQUOTE => 2;
+repr : BACKQUOTE testlist1 BACKQUOTE;
 
 @atom : tuple
     | list
     | dict
     | set
-    | LPAR yield_expr RPAR => 2
+    | LPAR yield_expr RPAR
     | repr
     | name
     | number
     | string+
     ;
+
+args_decl: STAR name;
+kwargs_decl: DOUBLESTAR name;
+args: STAR test;
+kwargs: DOUBLESTAR test;
+
+// Token groups
+
+compare_symbol : LESS
+    | GREATER
+    | EQEQUAL
+    | GREATEREQUAL
+    | LESSEQUAL
+    | NOTEQUAL
+    | IN
+    | NOT IN
+    | IS
+    | IS NOT
+    ;
+
+augassign_symbol : PLUSEQUAL
+    | MINEQUAL
+    | STAREQUAL
+    | SLASHEQUAL
+    | PERCENTEQUAL
+    | AMPEREQUAL
+    | VBAREQUAL
+    | CIRCUMFLEXEQUAL
+    | LEFTSHIFTEQUAL
+    | RIGHTSHIFTEQUAL
+    | DOUBLESTAREQUAL
+    | DOUBLESLASHEQUAL
+    ;
+
+term_symbol : STAR|SLASH|PERCENT|DOUBLESLASH ;
+shift_symbol: LEFTSHIFT|RIGHTSHIFT;
+add_symbol: PLUS|MINUS;
 
 name: NAME;
 number: DEC_NUMBER | HEX_NUMBER | OCT_NUMBER | FLOAT_NUMBER | IMAG_NUMBER;
@@ -359,7 +368,7 @@ NAME: '[a-zA-Z_][a-zA-Z_0-9]*(?!r?"|r?\')'  //"// Match names and not strings (r
         AS: 'as';
         LAMBDA: 'lambda';
 
-        // 
+        // Definitions
         DEF: 'def';
         CLASS: 'class';
 
@@ -393,6 +402,7 @@ NAME: '[a-zA-Z_][a-zA-Z_0-9]*(?!r?"|r?\')'  //"// Match names and not strings (r
 
 INDENT: '<INDENT>';
 DEDENT: '<DEDENT>';
+EOF: '<EOF>';
 
 %newline_char: '\n';    // default, can be omitted
 
