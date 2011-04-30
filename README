@@ -1,56 +1,100 @@
-What is Plyplus?
+   What is Plyplus?
+--------------------
 
 Plyplus is a python parser built on top of ply, with a slightly different approach to parsing.
-Most parsers work by calling a function for each rule they identify, where you have to process the data and return to the parser. Plyplus parses the entire file into a parse-tree, letting you search and process it using visitors and pattern-matching.
+Most parsers work by calling a function for each rule they identify, which processes the data and returns to the parser. Plyplus parses the entire file into a parse-tree, letting you search and process it using visitors and pattern-matching.
 Plyplus makes two uncommon separations: of code from grammar, and of processing from parsing.
 The result of this approach is (hopefully) a cleaner design, more powerful grammar processing, and a parser which is easier to write and to understand.
 
-   EXAMPLE USAGE
---------------------
->>> from plyplus import Grammar
->>> g = Grammar("start: '\(' name_list (COMMA MUL NAME)? '\)'; @name_list: NAME | name_list COMMA NAME ;  MUL: '\*'; COMMA: ','; NAME: '\w+'; ")
->>> s_exp = g.parse('(a,b,c,*x)')
->>> print s_exp
-['start', '(', 'a', ',', 'b', ',', 'c', ',', '*', 'x', ')']
->>> print [token for token in s_exp[1:] if token.type in 'NAME MUL']
-['a', 'b', 'c', '*', 'x']
+    Questions
+---------------------
 
-Explanation:
+Q. How capable is Plyplus?
+A. Plyplus is capable of parsing python, which has a notoriously hard grammar.
 
-Line #2 creates a plyplus grammar object. Here is the grammar again, split apart:
-start: '\(' name_list (COMMA MUL NAME)? '\)';
-@name_list: NAME | name_list COMMA NAME ;
-MUL: '\*';
-COMMA: ',';
-NAME: '\w+'; 
+Q. How fast is it?
+A. Plyplus does not put speed at its first priority. However, right now it manages to parse the entire Python26\Libs directory (200 files, 4mb of text, including post-processing) in about 42 seconds on my humble machine.
 
-These are five statements. Statements are separated by a semicolon.
-'start' is a rule name. Plyplus always starts with that rule. 'start' depends on 'name_list'.
-name_list is recursive rule. The att-sign before its name tells plyplus to collapse the recursion, so that its matches are all in one list instead of several nested ones.
-MUL, COMMA, and NAME are tokens. All-caps is the convention for tokens. A token is defined with a regular expression.
-It's worth mentioning that 'start' contains anonymous tokens. It's a useful feature for meaningless "marker" tokens.
+Q. So what is Plyplus' first priority?
+A. Ease of use. See the example to judge for yourself.
 
-Line #3 parses the string into an s-exp, which is a list formatted as [rule-name, match-0, match-1 ... match-n]
-Line #4 prints them as they are. Notice that all tokens (including the anonymous tokens ) are still in there.
-Because name_list was flattened, it doesn't appear in the resulting s-exp.
-While they inherit from string, the matching tokens contain extra attributes.
-Line #5 uses the extra 'type' attribute to filter the irrelevant tokens, and provide a clean list of parameters.
+   Example / Tutorial
+-------------------------
+In this section I'll show how to quickly write a list parser.
 
-As a side note, the parser doesn't play a big part in this example, which could be implemented using only a lexer. However, in this case the parser provides the implicit feature of filtering bad input. Go ahead and try to feed it anything illegal!
+First we import the Grammar class:
 
-    FILTERS
----------------
+    >>> from plyplus import Grammar
 
-Filters are a way to tell pyplus to clean up unwanted rules and tokens from the result.
-Filters are specified in the grammar, by appending the => symbol to a rule, followed by indices of wanted tokens, or carrotted indices of unwanted tokens.
-Not listing any wanted tokens will select all tokens. Not listing any unwanted tokens will have no effect.
+Now let's define the initial grammar:
 
-Example:
->>> g = Grammar("""
-    start: '\(' name_list (COMMA MUL NAME => 2 3)? '\)' => ^1 ^-1;
-    @name_list: NAME | name_list COMMA NAME => 1 3;
-    MUL: '\*'; COMMA: ','; NAME: '\w+'; 
-    """)
->>> print g.parse('(a,b,c,*x)')
-['start', 'a', 'b', 'c', '*', 'x']
+    >>> list_parser = Grammar(r"start: name (',' name)* ; name: '\w+' ;")
 
+A grammar is a collection of rules and tokens. In this example, we only use implicit tokens, by putting them in quotations. Let's dissect this grammar, which contains two rules:
+
+Rule 1. --  start: name (',' name)* ;
+
+start is the rule name. The initial rule is 'start' by default.
+The rule specifies that it must start with a rule called 'name', follow by a sequence of (comma, name). The asterisk means that this sequence can have any length, including zero. The rule end with a semicolon, as all rules must.
+
+Rule 2. -- name: '\w+' ;
+
+The rule 'name' (as referred to by start), contains just one token. The reason for having this rule, instead of just defining the token in 'start', will be clear later on. The token is defined using a regular expression (all tokens are regexps), and matches words (any sequence of one or more letters).
+
+Let's see the result of parsing with the grammar.
+
+    >>> list_parser.parse('cat,milk,dog')
+    ['start', ['name', 'cat'], ['simp_1_star', ',', ['name', 'milk'], ',', ['name', 'dog']]]
+
+The resulting list is of the format: [rulename, match-0, match-1 ... match-n ]
+You'll notice the output is a bit messy. Let's clean it up.
+1. 'simp_1_star' is the name of the implicit rule we created with the asterisk in 'start'. We can tell plyplus to expand it (i.e. move its matches to its parent) by using the @* operator.
+
+2. We don't need the commas. We can tell plyplus to get rid of extra tokens by using the filter_tokens option.
+
+Let's apply these changes and see the result:
+
+    >>> list_parser = Grammar(r"start: name (',' name)@* ; name: '\w+' ;", filter_tokens=True)
+    >>> list_parser.parse('cat,milk,dog')
+    ['start', ['name', 'cat'], ['name', 'milk'], ['name', 'dog']]
+
+That's much better, and we can apply a simple list comprehension to get the list data:
+
+    >>> [x[1] for x in _[1:]]
+    ['cat', 'milk', 'dog']
+
+Well, that seems like a lot of overhead just to split a list, doesn't it? The beauty of using grammars is how easy it is to add a lot of complication. Now that we know the basics, let's write a grammar that takes a string of nested python-ish lists and returns a flat list of all the numbers in it.
+
+    >>> list_parser = Grammar("""
+            start: list ;                           // We only match a list
+            @list : '\[' item (',' item)@* '\]' ;   // Define a list
+            @item : number | list ;                 // Define an item, provide nesting
+            number: '\d+' ;
+            SPACES: '[ ]+' {%ignore} ;              // Ignore spaces
+            """, filter_tokens=True)
+
+    >>> res = list_parser.parse('[1, 2, [ [3,4], 5], [6,7   ] ]')
+    >>> [x[1] for x in res[1:]]
+    ['1', '2', '3', '4', '5', '6', '7']
+
+This example contained some new elements, so here they are briefly:
+
+1. Prepending '@' to a rule name tels plyplus to always expand it. This is why the rules '@list' and '@item' do not appear in the output.
+
+2. Plyplus grammars support C++-like comments (not C's at the moment, though)
+
+3. SPACES is the first token we explicitly defined. It matches a sequence of spaces, and the special token flag '%ignore' tells plyplus not to include it when parsing (adding 'WS?' everywhere would make the grammar very cumbersome, and slower).
+
+The last example (for now) shows Plyplus' error handling and forgiving nature (largely the effect of using PLY as its engine). Let's say we forgot to open the brackets in the former sample input:
+
+    >>> list_parser.parse('1, 2, [ [3,4], 5], [6,7   ]')
+    Syntax error in input at '1' (type SIMP_4) line 1 col 1
+    Syntax error in input at ',' (type SIMP_0) line 1 col 18
+    ['start', ['number', '6'], ['number', '7']]
+
+Plyplus yells that it didn't expect a '1' at this point. However, it keep on going. It get confused again at the 4th comma, but then pulls itself together and continues parsing the last list properly, returning 6 and 7.
+SIMP_4 and SIMP_0 are the automatic name given to the bracket tokens. Had we defined them explicitly we would get even better error messages.
+
+I hope this inspired you to play with Plyplus a bit, or even use it for your project.
+
+If you have any questions or ideas, you can email my at: erez27+plyplus at gmail com
