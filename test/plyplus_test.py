@@ -162,7 +162,7 @@ def eggs9():
     logging.debug( g.parse(s) )
 
 
-def test_python_parse3():
+def test_python_lib():
     import glob, os
     g = Grammar(file(python_g_file))
 
@@ -195,11 +195,10 @@ def test_python_with_filters():
     #pprint(g.parse('a or not b and c\n'))
     pprint(g.parse(file('../plyplus.py').read()))
 
-def test_python_lib_with_filters():
+def test_python_lib_with_filters(path = 'C:\Python25\Lib'):
     import glob, os
     g = Grammar(file('python3.g'))
-
-    path = 'C:\Python25\Lib'
+    
     files = glob.glob(path+'\\*.py')
     start = time.time()
     for f in files:
@@ -218,11 +217,11 @@ if __name__ == '__main__':
     test_python_parse2(0)
     test_python_parse2(1)
     test_python_parse2(2)
-    test_python_parse3()
+    #test_python_lib()
     test_python4ply_sample()
     test3()
     test4()
     test5()
     test_into()
     #test_python_with_filters()
-    #test_python_lib_with_filters()
+    test_python_lib_with_filters('C:\Python26\Lib')

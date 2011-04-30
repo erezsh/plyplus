@@ -41,7 +41,7 @@ t_NUMBER = '\^?-?\d+'
 
 
 def t_COMMENT(t):
-    r'//[^\n]+\n'
+    r'//[^\n]*\n'
     pass
 
 def t_NL(t):

@@ -11,6 +11,7 @@ from sexp import Visitor, Transformer, head, tail, is_sexp
 #TODO: Offer alternatives to PLY facilities: precedence, error, line-count
 #TODO: Allow empty rules
 #TODO: Support States
+#TODO: a* is very slow. Optimize it.
 
 # -- Nice to have
 #TODO: find better terms than expand and flatten
@@ -22,6 +23,17 @@ from sexp import Visitor, Transformer, head, tail, is_sexp
 #TODO: Multiply defined tokens (just concatinate with |?)
 
 # -- Unknown status
+#TODO: a (b c d => 1 2) e
+#TODO: (a+)? is different from a*
+#       print_stmt : PRINT (RIGHTSHIFT? test (COMMA test)* COMMA?)?  ;
+#           --> only works as -->
+#       print_stmt : PRINT (RIGHTSHIFT? test ((COMMA test)+)? COMMA?)?  ;
+#
+#      Similarly:
+#      dictmaker : test COLON test (COMMA test COLON test)* COMMA? ;
+#           --> only works as -->
+#      dictmaker : test COLON test (COMMA test COLON test)+? COMMA? ;
+#
 #TODO: better filters
 #TODO: Add token history on parse error
 #TODO: Add rule history on parse error?
