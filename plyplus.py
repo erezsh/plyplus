@@ -134,32 +134,35 @@ class SimplifyGrammar_Visitor(Visitor):
         return changed
 
     def oper(self, tree):
-        operand_rule = tree[1]
+        rule_operand = tree[1]
         operator = tree[2]
         if operator in ('*', '@*'):
             # a : b c* d;
-            #  -->
+            #  --> in theory
             # a : b _c d;
             # _c : c _c |;
+            #  --> in practice (much faster with PLY, approx x2)
+            # a : b _c d | b d;
+            # _c : _c c | c;
             new_name = self._get_new_rule_name()
             mod = '@' if operator.startswith('@') else '#'
-            new_rule = ['ruledef', mod+new_name, ['rules_list', ['rule', operand_rule, new_name], ['rule']] ]
+            new_rule = ['ruledef', mod+new_name, ['rules_list', ['rule', rule_operand], ['rule', new_name, rule_operand]] ]
             self._rules_to_add.append(new_rule)
-            tree[:] = ['rule', new_name]
+            tree[:] = ['rules_list', ['rule', new_name], ['rule']]
         elif operator in ('+', '@+'):
             # a : b c+ d;
             #  -->
             # a : b _c d;
-            # _c : c _c | c;
+            # _c : _c c | c;
             new_name = self._get_new_rule_name()
             mod = '@' if operator.startswith('@') else '#'
-            new_rule = ['ruledef', mod+new_name, ['rules_list', ['rule', operand_rule], ['rule', new_name, operand_rule]] ]
+            new_rule = ['ruledef', mod+new_name, ['rules_list', ['rule', rule_operand], ['rule', new_name, rule_operand]] ]
             self._rules_to_add.append(new_rule)
             tree[:] = ['rule', new_name]
         elif operator == '?':
-            tree[:] = ['rules_list', operand_rule, ['rule']]
+            tree[:] = ['rules_list', rule_operand, ['rule']]
         else:
-            assert False, operand_rule
+            assert False, rule_operand
 
         return True # changed
 
