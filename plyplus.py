@@ -1,4 +1,4 @@
-import re
+import re, os
 
 from ply import lex, yacc
 
@@ -373,7 +373,7 @@ class LexerWrapper(object):
         t.lineno = self.lineno  # XXX may change from tok_value.line. On purpose??
         t.value = tok_value
         return t
-        
+
 
 
 class Grammar(object):
@@ -391,7 +391,7 @@ class Grammar(object):
 
         if isinstance(grammar, file):
             # PLY turns "a.b" into "b", so gotta get rid of the dot.
-            tab_filename = "parsetab_%s"%grammar.name.replace('.', '_')
+            tab_filename = "parsetab_%s"%os.path.split(grammar.name)[1].replace('.', '_')
             grammar = grammar.read()
         else:
             assert isinstance(grammar, str)
@@ -412,7 +412,7 @@ class Grammar(object):
             assert len(ply_grammar_and_code) == 1
             code = ''
         ply_grammar = ply_grammar_and_code[0]
-        
+
         for type, name, defin in ply_grammar:
             if type=='token':
                 assert defin[0] == "'"
