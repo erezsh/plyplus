@@ -65,6 +65,40 @@ from sexp import Visitor, Transformer, head, tail, is_sexp
 #----------------------------------------------------------------------
 
 
+def get_token_name(token, default):
+    return {
+        ':' : 'COLON',
+        ',' : 'COMMA',
+        ';' : 'SEMICOLON',
+        '+' : 'PLUS',
+        '-' : 'MINUS',
+        '*' : 'STAR',
+        '/' : 'SLASH',
+        '|' : 'VBAR',
+        '!' : 'BANG',
+        '?' : 'QMARK',
+        '#' : 'HASH',
+        '$' : 'DOLLAR',
+        '&' : 'AMPERSAND',
+        '<' : 'LESSTHAN',
+        '>' : 'MORETHAN',
+        '=' : 'EQUAL',
+        '.' : 'DOT',
+        '%' : 'PERCENT',
+        '`' : 'BACKQUOTE',
+        '^' : 'CIRCUMFLEX',
+        '"' : 'DBLQUOTE',
+        '\'' : 'QUOTE',
+        '~' : 'TILDE',
+        '@' : 'AT',
+        '(' : 'LPAR',
+        ')' : 'RPAR',
+        '{' : 'LBRACE',
+        '}' : 'RBRACE',
+        '[' : 'LSQB',
+        ']' : 'RSQB',
+    }.get( token, default)
+
 
 class GetTokenDefs_Visitor(Visitor):
     def __init__(self, dict_to_populate):
@@ -75,8 +109,10 @@ class GetTokenDefs_Visitor(Visitor):
 
 
 class SimplifyGrammar_Visitor(Visitor):
-    def __init__(self, unique_id, filters, expand_all_repeaters=False):
-        self._unique_id = unique_id
+    ANON_RULE_ID = 'anon'
+    ANON_TOKEN_ID = 'ANON'
+
+    def __init__(self, filters, expand_all_repeaters=False):
         self._count = 0
         self._rules_to_add = []
         self.filters = filters
@@ -86,12 +122,12 @@ class SimplifyGrammar_Visitor(Visitor):
         self.tokendefs = {} # to be populated at visit
 
     def _get_new_rule_name(self):
-        s = '%s%d'%(self._unique_id, self._count)
+        s = '_%s_%d'%(self.ANON_RULE_ID, self._count)
         self._count += 1
         return s
 
-    def _get_new_tok_name(self):
-        s = '%s%d'%(self._unique_id.upper(), self._count)
+    def _get_new_tok_name(self, tok):
+        s = '_%s_%d'%(get_token_name(tok[1:-1], self.ANON_TOKEN_ID), self._count)
         self._count += 1
         return s
 
@@ -202,7 +238,7 @@ class SimplifyGrammar_Visitor(Visitor):
                 try:
                     tok_name = self.tokendefs[child]
                 except KeyError:
-                    tok_name = self._get_new_tok_name() # Add anonymous token
+                    tok_name = self._get_new_tok_name(child) # Add anonymous token
                     self.tokendefs[child] = tok_name
                     self._rules_to_add.append(['tokendef', tok_name, child])
                 tree[i] = tok_name
@@ -402,7 +438,7 @@ class Grammar(object):
             raise Exception("Parse Error")
 
         self.filters = {}
-        grammar_tree = SimplifyGrammar_Visitor('simp_', self.filters, expand_all_repeaters=expand_all_repeaters).visit(grammar_tree)
+        grammar_tree = SimplifyGrammar_Visitor(self.filters, expand_all_repeaters=expand_all_repeaters).visit(grammar_tree)
         ply_grammar_and_code = ToPlyGrammar_Tranformer().transform(grammar_tree)
 
         # code may be omitted
