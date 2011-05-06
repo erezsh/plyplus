@@ -12,32 +12,21 @@ from sexp import Visitor, Transformer, head, tail, is_sexp
 #TODO: Support States
 
 # -- Nice to have
+#TODO: Recursive parsing
 #TODO: find better terms than expand and flatten
-#TODO: rename simps
-#TODO: meaningful names to anonymous tokens
 #TODO: Exact recovery of input (as text attr)
 #      Allow to reconstruct the input with whatever changes were made to the tree
 #TODO: Allow 'optimize' mode
 #TODO: Rule Self-recursion (an operator? a 'self' keyword?)
-#TODO: Multiply defined tokens (just concatinate with |?)
+#TODO: Add token history on parse error
+#TODO: Add rule history on parse error?
 
 # -- Unknown status
+#TODO: Multiply defined tokens (just concatinate with |?)
 #TODO: Complete EOF handling in python grammar (postlex)
 #TODO: Make filter behaviour consitent for both ()? and ()* / ()+
 #TODO: a (b c d => 1 2) e
-#TODO: (a+)? is different from a*
-#       print_stmt : PRINT (RIGHTSHIFT? test (COMMA test)* COMMA?)?  ;
-#           --> only works as -->
-#       print_stmt : PRINT (RIGHTSHIFT? test ((COMMA test)+)? COMMA?)?  ;
-#
-#      Similarly:
-#      dictmaker : test COLON test (COMMA test COLON test)* COMMA? ;
-#           --> only works as -->
-#      dictmaker : test COLON test (COMMA test COLON test)+? COMMA? ;
-#
 #TODO: better filters
-#TODO: Add token history on parse error
-#TODO: Add rule history on parse error?
 #TODO: Offer mechanisms to easily avoid ambiguity (expr: expr '\+' expr etc.)
 #TODO: Change rule+ into "rule simp*" instead of "simp+"
 #TODO: Use PLY's ignore mechanism (=tokens return None) instead of post-filtering it myself?
@@ -46,23 +35,23 @@ from sexp import Visitor, Transformer, head, tail, is_sexp
 #TODO: Optimize for space
 #TODO: Optimize for speed
 #TODO: require less knowledge of ply
+#TODO: meaningful names to anonymous tokens
 
+# -- Done
 #DONE: anonymous tokens
 #DONE: Resolve errors caused by dups of tokens
 #DONE: Allow comments in grammar
-
-#----------------------------------------------------------------------
-# Known Issue! -- Bad Rule Handling on Repitition (TODO)
-#----------------------------------------------------------------------
-
-#   Sometimes recursion (or repitition) will make the parser enter a rule which is incorrect (probably too small lookahead?). 
-#   Unrolling the first (or two) element of the recursion can be helpful: I suppose that way it won't enter the recursion unless it has a good reason to
-#   A temporary solution: Don't put repitition as the first thing on your rule?
-
-#   OK: list_inner	: expr | expr COMMA (expr (COMMA)? )@* ;
-#   BAD: list_inner	: expr | (expr (COMMA)? )@* ;
-#   BAD: list_inner	: expr | (expr (COMMA)? )@+ ;
-#----------------------------------------------------------------------
+#DONE: (a+)? is different from a*
+#       print_stmt : PRINT (RIGHTSHIFT? test (COMMA test)* COMMA?)?  ;
+#           --> only works as -->
+#       print_stmt : PRINT (RIGHTSHIFT? test ((COMMA test)+)? COMMA?)?  ;
+#
+#      Similarly:
+#      dictmaker : test COLON test (COMMA test COLON test)* COMMA? ;
+#           --> only works as -->
+#      dictmaker : test COLON test (COMMA test COLON test)+? COMMA? ;
+#DONE: rename simps
+#
 
 
 def get_token_name(token, default):
