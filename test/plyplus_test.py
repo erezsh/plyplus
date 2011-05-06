@@ -228,7 +228,7 @@ def test_python_lib_with_filters(path = 'C:\Python25\Lib'):
 if __name__ == '__main__':
     #test_python_into()
     test_filtered_python()
-    sys.exit()
+    #sys.exit()
 
 
     test_python_lex()
