@@ -513,6 +513,17 @@ class LexerWrapper(object):
 
 class Grammar(object):
     def __init__(self, grammar, **options):
+        self.tokens = []    # for lex module
+        self.rules_to_flatten = []
+        self.rules_to_expand = []
+        self._newline_tokens = set()
+        self._ignore_tokens = set()
+        self.lexer_postproc = None
+        self._newline_value = '\n'
+        self.filter_tokens = filter_tokens
+        self.expand_all_repeaters = expand_all_repeaters
+        self.reconstructable_input = reconstructable
+
         if isinstance(grammar, file):
             # PLY turns "a.b" into "b", so gotta get rid of the dot.
             tab_filename = "parsetab_%s"%os.path.split(grammar.name)[1].replace('.', '_')
