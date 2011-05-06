@@ -54,6 +54,59 @@ from sexp import Visitor, Transformer, head, tail, is_sexp
 #
 
 
+class ReconstructedLine(object):
+    DEFAULT_CHAR = ' ';
+    def __init__(self, allow_overwrite=False):
+        self.allow_overwrite = allow_overwrite
+        self.line = bytearray()
+    def add_text(self, text, column):
+        end_column = column + len(text)
+        if len(self.line) < end_column:
+            self.line += self.DEFAULT_CHAR * ( end_column - len(self.line) )
+        if not self.allow_overwrite and self.line[column:end_column].strip(self.DEFAULT_CHAR):
+            raise Exception('Cannot add text: location already used')
+        self.line[column:end_column] = text
+    def __str__(self):
+        return str(self.line)
+
+class ReconstructedText(object):
+    def __init__(self, allow_overwrite=False):
+        self.allow_overwrite = allow_overwrite
+        self.lines = {}
+    def add_text(self, text, line, column):
+        if '\n' in text:
+            for text2 in text.split('\n'):
+                self.add_text(text2, line, column)
+                line += 1
+                column = 0
+            return
+
+        if line not in self.lines:
+            self.lines[line] = ReconstructedLine(allow_overwrite=self.allow_overwrite)
+        self.lines[line].add_text(text, column)
+    def __str__(self):
+        text = []
+        lines = dict(self.lines)
+        while lines:
+            try:
+                text.append( str(lines.pop(len(text))) )
+            except KeyError:
+                text.append( '' )
+        return '\n'.join(text)
+
+class ReconstructInput(Visitor):
+    def __init__(self):
+        self.text = ReconstructedText()
+    def default(self, tree):
+        for child in tail(tree):
+            if not is_sexp(child) and child and child.strip():
+                assert type(child) == TokValue, '%r %s'%(child, type(child))
+                self.text.add_text(str(child), child.line, child.column)
+                print '*', child
+    def get(self):
+        return str(self.text)
+
+
 def get_token_name(token, default):
     return {
         ':' : 'COLON',
@@ -333,12 +386,22 @@ class FilterTokens_Tranformer(Transformer):
         return [tree[0]] + [x for x in tail(tree) if is_sexp(x)]
 
 class TokValue(str):
-    #def __repr__(self):
-    #    return repr("%s:%s|%s"%(self.line, self.column, self))
-    pass
+    def __new__(cls, s, type=None, line=None, column=None, pos_in_stream=None, index=None):
+        inst = str.__new__(cls,s)
+        inst.type = type
+        inst.line = line
+        inst.column = column
+        inst.pos_in_stream = pos_in_stream
+        inst.index = index
+        return inst
+
+    def __repr__(self):
+        if self.line and self.column:
+            return repr("%s:%s|%s"%(self.line, self.column, self))
+        return str.__repr__(self)
 
 class LexerWrapper(object):
-    def __init__(self, lexer, newline_tokens_names, newline_char='\n', ignore_token_names=()):
+    def __init__(self, lexer, newline_tokens_names, newline_char='\n', ignore_token_names=(), reconstructable_input=False):
         self.lexer = lexer
         self.newline_tokens_names = newline_tokens_names
         self.ignore_token_names = ignore_token_names
@@ -346,6 +409,10 @@ class LexerWrapper(object):
 
         self.current_state = lexer.current_state
         self.begin = lexer.begin
+
+        self.last_token = None
+        self.reconstructable_input = reconstructable_input
+        self.all_tokens = []
 
 
     def input(self, s):
@@ -359,8 +426,6 @@ class LexerWrapper(object):
         self.lineno += newlines
 
         if newlines:
-            #newline_text, trailing_text = t.value.rsplit( self.newline_char, 1 )
-            #self._lexer_pos_of_start_column = t.lexpos + len(newline_text)
             self._lexer_pos_of_start_column = t.lexpos + t.value.rindex(self.newline_char)
         else:
             self._lexer_pos_of_start_column = t.lexpos 
@@ -369,41 +434,49 @@ class LexerWrapper(object):
         # get a new token that shouldn't be ignored
         while True:
             t = self.lexer.token()
+            self._tok_count += 1
             if not t:
                 return t
-            if t.type not in self.ignore_token_names:
-                break
-            if t.type in self.newline_tokens_names:
-                self._handle_newlines(t)
+            try:
+                wrapped = False
+                if self.reconstructable_input:
+                    self._wrap_token(t)
+                    self.all_tokens.append( t.value )
+                    wrapped = True
+                if t.type not in self.ignore_token_names:
+                    if not wrapped:
+                        self._wrap_token(t)
+                    return t
+            finally:
+                # handle line and column
+                # must happen after assigning, because we want the start, not the end
+                # in other words, we want to apply the token's effect to the lexer, not to itself
+                if t.type in self.newline_tokens_names:
+                    self._handle_newlines(t)
 
-        # create a tok_value
-        tok_value = TokValue(t.value)
-        tok_value.line = self.lineno
-        tok_value.column = t.lexpos-self._lexer_pos_of_start_column
-        tok_value.pos_in_stream = t.lexpos
-        tok_value.type = t.type
-        tok_value.index = self._tok_count
-
-        # handle line and column
-        # must happen after assigning, because we want the start, not the end
-        if t.type in self.newline_tokens_names:
-            self._handle_newlines(t)
-
+    def _wrap_token(self, t):
+        tok_value = TokValue(t.value,
+                        line = self.lineno,
+                        column = t.lexpos-self._lexer_pos_of_start_column,
+                        pos_in_stream = t.lexpos,
+                        type = t.type,
+                        index = self._tok_count,
+                    )
+        if self.reconstructable_input:
+                tok_value.rel_line = tok_value.line - (self.last_token.line if self.last_token else 0)
+                tok_value.rel_column = tok_value.column - (self.last_token.column if self.last_token else 0)
+                tok_value.rel_token = self.last_token
+                self.last_token = tok_value
 
         if hasattr(t, 'lexer'):
-            t.lexer.lineno = self.lineno    # why not self.lexer ?
+            t.lexer.lineno = self.lineno    # not self.lexer, because it may be another wrapper
 
-        self._tok_count += 1
-
-        t.lineno = self.lineno  # XXX may change from tok_value.line. On purpose??
+        t.lineno = self.lineno
         t.value = tok_value
-        return t
-
-
 
 class Grammar(object):
 
-    def __init__(self, grammar, debug=False, just_lex=False, ignore_postproc=False, filter_tokens=False, expand_all_repeaters=False):
+    def __init__(self, grammar, debug=False, just_lex=False, ignore_postproc=False, filter_tokens=False, expand_all_repeaters=False, reconstructable=False):
         self.tokens = []    # for lex module
         self.rules_to_flatten = []
         self.rules_to_expand = []
@@ -413,6 +486,7 @@ class Grammar(object):
         self._newline_value = '\n'
         self.filter_tokens = filter_tokens
         self.expand_all_repeaters = expand_all_repeaters
+        self.reconstructable_input = reconstructable
 
         if isinstance(grammar, file):
             # PLY turns "a.b" into "b", so gotta get rid of the dot.
@@ -455,7 +529,7 @@ class Grammar(object):
         exec(code)
 
         lexer = lex.lex(module=self)
-        lexer = LexerWrapper(lexer, newline_tokens_names=self._newline_tokens, newline_char=self._newline_value, ignore_token_names=self._ignore_tokens)
+        lexer = LexerWrapper(lexer, newline_tokens_names=self._newline_tokens, newline_char=self._newline_value, ignore_token_names=self._ignore_tokens, reconstructable_input=self.reconstructable_input)
         if self.lexer_postproc and not ignore_postproc:
             lexer = self.lexer_postproc(lexer)
 
