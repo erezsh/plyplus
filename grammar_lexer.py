@@ -18,7 +18,6 @@ tokens = (
         'LCURLY',
         'RCURLY',
         'NUMBER',
-        'NUMBERMOD',
 #        'COMMENT',
     )
 
@@ -42,6 +41,7 @@ t_NUMBER = '\^?-?\d+'
 
 def t_COMMENT(t):
     r'//[^\n]*\n'
+    t.lexer.lineno += 1
     pass
 
 def t_NL(t):
@@ -51,6 +51,6 @@ def t_NL(t):
 
 t_ignore = " \t\r"
 def t_error(t):
-    raise Exception("Illegal character in grammar: '%s' in %s" % (t.value[0], t.value[:10] ))
+    raise Exception("Illegal character in grammar: %r in %r" % (t.value[0], t.value[:10] ))
 
 lexer  = lex.lex(lextab=LEX_TAB_MODULE)
