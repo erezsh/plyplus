@@ -1,4 +1,4 @@
-import sys
+import sys, os
 import logging
 sys.path.append('..')
 from plyplus import Grammar, TokValue
@@ -7,13 +7,20 @@ from pprint import pprint
 logging.basicConfig(level=logging.INFO)
 # TODO add tests for python versions other than 2.5
 
+if os.name == 'nt':
+    PYTHON25_LIB = r'C:\Python25\Lib\\'
+    PYTHON_LIB = r'C:\Python26\Lib\\'
+else:
+    PYTHON25_LIB = None
+    PYTHON_LIB = '/usr/lib64/python2.7/'
+
 FIB = """
 def fib(n):
     if n <= 1:
         return 1
     return fib(
 n-1) + fib(n-2)
-        
+
 for i in range(11):
     print fib(i),
 """
@@ -24,7 +31,7 @@ def test():
     #t = FlattenGrammar_Visitor().visit(p)
     #t = SimplifyGrammar_Visitor('simp_').visit(p)
     #pt.visit(FlattenGrammar_Visitor())
-    
+
     g = Grammar(file('sample_grammar.txt').read())
     for x in g.parse(file('sample_input.txt').read())[1][1]:
         if isinstance(x, TokValue):
@@ -66,7 +73,7 @@ def test3():
 def test4():
     g = Grammar("start: '\(' name_list (COMMA MUL NAME)? '\)'; @name_list: NAME | name_list COMMA NAME ;  MUL: '\*'; COMMA: ','; NAME: '\w+'; ")
     l = g.parse('(a,b,c,*x)')
-    
+
     g = Grammar("start: '\(' name_list (COMMA MUL NAME)? '\)'; @name_list: NAME | name_list COMMA NAME ;  MUL: '\*'; COMMA: ','; NAME: '\w+'; ")
     assert l == g.parse('(a,b,c,*x)')
 
@@ -109,7 +116,7 @@ def test2():
              ]
         """, expected=18)
 
-python_g_file = 'python2.g'
+python_g_file = '../grammars/python.g'
 
 import time
 def test_python_parse():
@@ -131,8 +138,9 @@ def test_python_parse():
         end = time.time()
         logging.info("Time: %s secs " % (end-start))
 
-    l = g.parse(file(r'C:\Python25\Lib\os.py').read())
-    l = g.parse(file(r'C:\Python25\Lib\pydoc.py').read())
+    if PYTHON25_LIB:
+        l = g.parse(file(PYTHON25_LIB + 'os.py').read())
+        l = g.parse(file(PYTHON25_LIB + 'pydoc.py').read())
 
 def test_python_parse2(n):
     g = Grammar(file(python_g_file))
@@ -168,8 +176,8 @@ def test_python_lib():
     import glob, os
     g = Grammar(file(python_g_file))
 
-    path = 'C:\Python25\Lib'
-    files = glob.glob(path+'\\*.py')
+    path = PYTHON_LIB
+    files = glob.glob(path+'/*.py')
     start = time.time()
     for f in files:
         f2 = os.path.join(path,f)
@@ -204,17 +212,17 @@ def test_python_with_filters():
     #pprint(g.parse('a or not b and c\n'))
     pprint(g.parse(file('../plyplus.py').read()))
 
-def test_filtered_python():
-    g = Grammar(file('python3.g'), filter_tokens=True, expand_all_repeaters=True)
+def test_auto_filtered_python():
+    g = Grammar(file('python3.g'), auto_filter_tokens=True, expand_all_repeaters=True)
     r = g.parse(file('../plyplus.py').read())
     #pprint()
     from sexp import find
     print [x[1] for x in find(r, 'decorator')]
 
-def test_python_lib_with_filters(path = 'C:\Python25\Lib'):
+def test_python_lib_with_filters(path = PYTHON_LIB):
     import glob, os
     g = Grammar(file('python3.g'))
-    
+
     files = glob.glob(path+'\\*.py')
     start = time.time()
     for f in files:
@@ -225,11 +233,22 @@ def test_python_lib_with_filters(path = 'C:\Python25\Lib'):
     end = time.time()
     logging.info("Test3 (%d files), time: %s secs"%(len(files), end-start))
 
+def test_config_parser():
+    g = Grammar(file('../grammars/config.g'), auto_filter_tokens=True)
+    res = g.parse("""
+        [ bla Blah bla ]
+        thisAndThat = hel!l%o/
+        one1111:~$!@ and all that stuff
+
+        [Section2]
+        whatever: whatever
+        """)
+    print res
+
 if __name__ == '__main__':
     #test_python_into()
-    test_filtered_python()
+    test_auto_filtered_python()
     #sys.exit()
-
 
     test_python_lex()
     test_python_lex2()
@@ -238,11 +257,11 @@ if __name__ == '__main__':
     test_python_parse2(0)
     test_python_parse2(1)
     test_python_parse2(2)
-    #test_python_lib()
+    test_python_lib()
     test_python4ply_sample()
     test3()
     test4()
     test5()
     test_into()
     #test_python_with_filters()
-    test_python_lib_with_filters('C:\Python26\Lib')
+    #test_python_lib_with_filters(PYTHON_LIB)
