@@ -551,10 +551,39 @@ class _Grammar(object):
         self.lexer_postproc = None
         self._newline_value = '\n'
 
+        self._grammar = _Grammar(grammar_tree, source, tab_filename, **options)
+
+    def lex(self, text):
+        return self._grammar.lex(text)
+
+    def parse(self, text):
+        return self._grammar.parse(text)
+
+class _Grammar(object):
+    def __init__(self, grammar_tree, source_name, tab_filename, **options):
+        self.options = dict(options)
+        self.debug=bool(options.pop('debug', False))
+        self.just_lex=bool(options.pop('just_lex', False))
+        self.ignore_postproc=bool(options.pop('ignore_postproc', False))
+        self.auto_filter_tokens=bool(options.pop('auto_filter_tokens', False))
+        self.expand_all_repeaters=bool(options.pop('expand_all_repeaters', False))
+        if options:
+            raise TypeError("Unknown options: %s"%options.keys())
+
+        self.tab_filename = tab_filename
+        self.source_name = source_name
+        self.tokens = []    # for lex module
+        self.rules_to_flatten = []
+        self.rules_to_expand = []
+        self._newline_tokens = set()
+        self._ignore_tokens = set()
+        self.lexer_postproc = None
+        self._newline_value = '\n'
+
         self.subgrammars = {}
         self.filters = {}
         ExtractSubgrammars_Visitor(source_name, tab_filename, self.options).visit(grammar_tree)
-        grammar_tree = SimplifyGrammar_Visitor('simp_', self.filters, expand_all_repeaters=self.expand_all_repeaters).visit(grammar_tree)
+        grammar_tree = SimplifyGrammar_Visitor(self.filters, expand_all_repeaters=self.expand_all_repeaters).visit(grammar_tree)
         ply_grammar_and_code = ToPlyGrammar_Tranformer().transform(grammar_tree)
 
         # code may be omitted
