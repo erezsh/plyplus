@@ -7,17 +7,12 @@ from pprint import pprint
 logging.basicConfig(level=logging.INFO)
 # TODO add tests for python versions other than 2.5
 
-<<<<<<< HEAD
-PYTHON25_LIB = None
-PYTHON_LIB = '/usr/lib64/python2.7/'
-=======
 if os.name == 'nt':
     PYTHON25_LIB = r'C:\Python25\Lib\\'
     PYTHON_LIB = r'C:\Python26\Lib\\'
 else:
     PYTHON25_LIB = None
     PYTHON_LIB = '/usr/lib64/python2.7/'
->>>>>>> Refactored Grammar, tests
 
 FIB = """
 def fib(n):
@@ -252,7 +247,8 @@ def test_config_parser():
 
 if __name__ == '__main__':
     #test_python_into()
-    test_auto_filtered_python()
+    test_config_parser()
+    #test_auto_filtered_python()
     #sys.exit()
     test_config_parser()
     #test_auto_filtered_python()
