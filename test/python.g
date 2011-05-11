@@ -251,7 +251,7 @@ OPASSIGN: '\+=|-=|\*=|/=|/\/=|%=|\*\*=|&=|\|=|\^=|\<\<=|\>\>=';
 
 STRING : 'u?r?("(?!"").*?(?<!\\)(\\\\)*?"|\'(?!\'\').*?(?<!\\)(\\\\)*?\')' ;
 LONG_STRING : '(?s)u?r?(""".*?(?<!\\)(\\\\)*?"""|\'\'\'.*?(?<!\\)(\\\\)*?\'\'\')'
-    {%newline}
+    (%newline)
     ;
 
 
@@ -259,7 +259,7 @@ LPAREN: '\(';
 RPAREN: '\)';
 LBRACK: '\[';
 RBRACK: '\]';
-LCURLY: '\{';
+LCURLY: '\(';
 RCURLY: '\}';
 COLON: ':';
 SEMICOLON: ';';
@@ -280,14 +280,14 @@ ELLIPSIS: '(?<=(\[|,))\.\.\.';
 
 
 NL: '(\r?\n[\t ]*)+'    // Don't count on the + to prevent multiple NLs. They can happen.
-    {%newline}
+    (%newline)
     ;
 
-WS: '[\t \f]+' {%ignore};
-LINE_CONT: '\\[\t \f]*\r?\n' {%ignore} {%newline};
+WS: '[\t \f]+' (%ignore);
+LINE_CONT: '\\[\t \f]*\r?\n' (%ignore) (%newline);
 
 NAME: '[a-zA-Z_][a-zA-Z_0-9]*(?!r?"|r?\')'  //"// Match names and not strings (r"...")
-    {%unless
+    (%unless
         PRINT: 'print';
         IMPORT: 'import';
         FROM: 'from';
@@ -327,7 +327,7 @@ NAME: '[a-zA-Z_][a-zA-Z_0-9]*(?!r?"|r?\')'  //"// Match names and not strings (r
         NOT: 'not';
         IS: 'is';
         IN: 'in';
-    }
+    )
     ;
 
 

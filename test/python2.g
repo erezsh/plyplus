@@ -616,7 +616,7 @@ IMAG_NUMBER: '(\d+[jJ]|((\d+\.\d*|\.\d+)([eE][-+]?\d+)?|\d+[eE][-+]?\d+)[jJ])';
 
 STRING : 'u?r?("(?!"").*?(?<!\\)(\\\\)*?"|\'(?!\'\').*?(?<!\\)(\\\\)*?\')' ;
 LONG_STRING : '(?s)u?r?(""".*?(?<!\\)(\\\\)*?"""|\'\'\'.*?(?<!\\)(\\\\)*?\'\'\')'
-    {%newline}
+    (%newline)
     ;
 
 LEFTSHIFTEQUAL: '\<\<=';
@@ -669,15 +669,15 @@ LSQB: '\[';
 RSQB: ']';
 
 NEWLINE: '(\r?\n[\t ]*)+'    // Don't count on the + to prevent multiple NLs. They can happen.
-    {%newline}
+    (%newline)
     ;
 
-WS: '[\t \f]+' {%ignore};
-LINE_CONT: '\\[\t \f]*\r?\n' {%ignore} {%newline};
-COMMENT: '\#[^\n]*'{%ignore};
+WS: '[\t \f]+' (%ignore);
+LINE_CONT: '\\[\t \f]*\r?\n' (%ignore) (%newline);
+COMMENT: '\#[^\n]*'(%ignore);
 
 NAME: '[a-zA-Z_][a-zA-Z_0-9]*(?!r?"|r?\')'  //"// Match names and not strings (r"...")
-    {%unless
+    (%unless
         PRINT: 'print';
         IMPORT: 'import';
         FROM: 'from';
@@ -688,7 +688,7 @@ NAME: '[a-zA-Z_][a-zA-Z_0-9]*(?!r?"|r?\')'  //"// Match names and not strings (r
         AS: 'as';
         LAMBDA: 'lambda';
 
-        // 
+        //
         DEF: 'def';
         CLASS: 'class';
 
@@ -717,7 +717,7 @@ NAME: '[a-zA-Z_][a-zA-Z_0-9]*(?!r?"|r?\')'  //"// Match names and not strings (r
         NOT: 'not';
         IS: 'is';
         IN: 'in';
-    }
+    )
     ;
 
 INDENT: '<INDENT>';
@@ -726,6 +726,6 @@ DEDENT: '<DEDENT>';
 %newline_char: '\n';    // default, can be omitted
 
 ###
-from python2_indent_postlex import PythonIndentTracker 
+from python2_indent_postlex import PythonIndentTracker
 self.lexer_postproc = PythonIndentTracker
 

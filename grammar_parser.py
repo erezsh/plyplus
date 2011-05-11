@@ -42,7 +42,7 @@ def p_tokenmods(p):
     p[0] = ['tokenmods'] + p[1:]
 
 def p_tokenmod(p):
-    """tokenmod : LCURLY OPTION modtokenlist RCURLY"""
+    """tokenmod : LPAR OPTION modtokenlist RPAR"""
     p[0] = ['tokenmod', p[2], p[3]]
 
 def p_modtokenlist(p):

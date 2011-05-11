@@ -42,7 +42,7 @@ start: (NEWLINE|stmt)+;
 
   exec_stmt : EXEC expr (IN test (COMMA test)?)? ;
 
-  print_stmt : PRINT ((print_into COMMA)? test (COMMA test)+? COMMA?)? 
+  print_stmt : PRINT ((print_into COMMA)? test (COMMA test)+? COMMA?)?
     | PRINT print_into
     ;
   print_into : RIGHTSHIFT test;
@@ -296,7 +296,7 @@ IMAG_NUMBER: '(\d+[jJ]|((\d+\.\d*|\.\d+)([eE][-+]?\d+)?|\d+[eE][-+]?\d+)[jJ])';
 
 STRING : '(u|b|)r?("(?!"").*?(?<!\\)(\\\\)*?"|\'(?!\'\').*?(?<!\\)(\\\\)*?\')' ;
 LONG_STRING : '(?s)(u|b|)r?(""".*?(?<!\\)(\\\\)*?"""|\'\'\'.*?(?<!\\)(\\\\)*?\'\'\')'
-    {%newline}
+    (%newline)
     ;
 
 LEFTSHIFTEQUAL: '\<\<=';
@@ -349,15 +349,15 @@ LSQB: '\[';
 RSQB: ']';
 
 NEWLINE: '(\r?\n[\t ]*)+'    // Don't count on the + to prevent multiple NEWLINE tokens. It's just an optimization
-    {%newline}
+    (%newline)
     ;
 
-WS: '[\t \f]+' {%ignore};
-LINE_CONT: '\\[\t \f]*\r?\n' {%ignore} {%newline};
-COMMENT: '\#[^\n]*'{%ignore};
+WS: '[\t \f]+' (%ignore);
+LINE_CONT: '\\[\t \f]*\r?\n' (%ignore) (%newline);
+COMMENT: '\#[^\n]*'(%ignore);
 
 NAME: '[a-zA-Z_][a-zA-Z_0-9]*(?!r?"|r?\')'  //"// Match names and not strings (r"...")
-    {%unless
+    (%unless
         PRINT: 'print';
         IMPORT: 'import';
         FROM: 'from';
@@ -397,7 +397,7 @@ NAME: '[a-zA-Z_][a-zA-Z_0-9]*(?!r?"|r?\')'  //"// Match names and not strings (r
         NOT: 'not';
         IS: 'is';
         IN: 'in';
-    }
+    )
     ;
 
 INDENT: '<INDENT>';
