@@ -29,6 +29,7 @@ def p_def(p):
 def p_tokendef(p):
     """tokendef : TOKEN COLON REGEXP SEMICOLON
                 | TOKEN COLON REGEXP tokenmods SEMICOLON
+                | TOKEN COLON REGEXP subgrammar SEMICOLON
     """
     if len(p) > 5:
         p[0] = ['tokendef', p[1], p[3], p[4]]
@@ -50,6 +51,10 @@ def p_modtokenlist(p):
                     |
     """
     p[0] = ['modtokenlist'] + p[1:]
+
+def p_subgrammar(p):
+    """subgrammar : LCURLY extgrammar RCURLY"""
+    p[0] = ['subgrammar', p[2]]
 
 def p_ruledef(p):
     """ruledef : RULENAME COLON rules_list SEMICOLON

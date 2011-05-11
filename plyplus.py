@@ -10,6 +10,8 @@ from sexp import Visitor, Transformer, head, tail, is_sexp
 #TODO: Offer alternatives to PLY facilities: precedence, error, line-count
 #TODO: Allow empty rules
 #TODO: Support States
+#TODO: @ on start symbols should expand them (right now not possible because of technical issues)
+#      alternatively (but not as good?): add option to expand all 'start' symbols
 
 # -- Nice to have
 #TODO: Recursive parsing
@@ -97,6 +99,33 @@ class GetTokenDefs_Visitor(Visitor):
     def tokendef(self, tree):
         self.tokendefs[ tree[2] ] = tree[1]
 
+class ExtractSubgrammars_Visitor(Visitor):
+    def __init__(self, parent_source_name, parent_tab_filename, parent_options):
+        self.parent_source_name = parent_source_name
+        self.parent_tab_filename = parent_tab_filename
+        self.parent_options = parent_options
+
+        self.last_tok = None
+
+    def pre_tokendef(self, tok):
+        self.last_tok = tok[1]
+    def subgrammar(self, tree):
+        assert self.last_tok
+        assert len(tree) == 2
+        source_name = '%s:%s'%(self.parent_source_name, self.last_tok.lower())
+        tab_filename = '%s_%s'%(self.parent_tab_filename, self.last_tok.lower())
+        subgrammar = _Grammar(tree[1], source_name, tab_filename, **self.parent_options)
+        tree[:] = ['subgrammarobj', subgrammar]
+
+class ApplySubgrammars_Visitor(Visitor):
+    def __init__(self, subgrammars):
+        self.subgrammars = subgrammars
+    def default(self, tree):
+        for i,tok in tail(enumerate(tree)):
+            if type(tok) == TokValue and tok.type in self.subgrammars:
+                parsed_tok = self.subgrammars[tok.type].parse(tok)
+                assert parsed_tok[0] == 'start'
+                tree[i] = parsed_tok
 
 class SimplifyGrammar_Visitor(Visitor):
     ANON_RULE_ID = 'anon'
@@ -446,7 +475,9 @@ class _Grammar(object):
         self.lexer_postproc = None
         self._newline_value = '\n'
 
+        self.subgrammars = {}
         self.filters = {}
+        ExtractSubgrammars_Visitor(source_name, tab_filename, self.options).visit(grammar_tree)
         grammar_tree = SimplifyGrammar_Visitor(self.filters, expand_all_repeaters=self.expand_all_repeaters).visit(grammar_tree)
         ply_grammar_and_code = ToPlyGrammar_Tranformer().transform(grammar_tree)
 
@@ -502,6 +533,10 @@ class _Grammar(object):
         if self.filters:
             FilterSyntaxTree_Visitor(self.filters).visit(tree)
 
+        # Apply subgrammars
+        if self.subgrammars:
+            ApplySubgrammars_Visitor(self.subgrammars).visit(tree)
+
         if self.auto_filter_tokens:
             tree = FilterTokens_Tranformer().transform(tree)
         SimplifySyntaxTree_Visitor(self.rules_to_flatten, self.rules_to_expand).visit(tree)
@@ -523,7 +558,10 @@ class _Grammar(object):
         re_defin, token_features = defin
 
         token_added = False
-        if head(token_features) == 'tokenmods':
+        if head(token_features) == 'subgrammarobj':
+            assert len(token_features) == 2
+            self.subgrammars[name] = token_features[1]
+        elif head(token_features) == 'tokenmods':
             for token_mod in tail(token_features):
                 mod, modtokenlist = tail(token_mod)
 
