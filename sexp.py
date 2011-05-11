@@ -14,6 +14,10 @@ class Visitor(object):
         return tree
 
     def _visit(self, tree):
+        pre_f = getattr(self, 'pre_' + head(tree), None)
+        if pre_f:
+            pre_f(tree)
+
         for branch in tail(tree):
             if is_sexp(branch):
                 self._visit(branch)
