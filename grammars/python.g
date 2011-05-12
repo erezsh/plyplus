@@ -32,6 +32,7 @@ start: (NEWLINE|stmt)+;
 
   expr_stmt : testlist;
 
+  // testlist is too permissive, maybe even unecessarily slow
   assign_stmt : testlist (EQUAL (yield_expr|testlist))+ ;
   augassign_stmt : testlist augassign_symbol (testlist|yield_expr) ;
 
@@ -68,7 +69,7 @@ start: (NEWLINE|stmt)+;
 
 // compound flow statements
   while_stmt : WHILE test COLON suite else_stmt? ;
-  with_stmt : WITH test (AS expr)? COLON suite;
+  with_stmt : WITH test (AS expr)? (COMMA test (AS expr)?)@* COLON suite;    // Too permissive
   if_stmt : IF test COLON suite (ELIF test COLON suite)* else_stmt? ;
   for_stmt : FOR exprlist IN testlist COLON suite else_stmt? ;
   try_stmt : TRY COLON suite (except_stmt@+ else_stmt?  finally_stmt? | finally_stmt );
