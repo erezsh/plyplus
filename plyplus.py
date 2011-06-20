@@ -32,6 +32,11 @@ from sexp import Visitor, Transformer, head, tail, is_sexp
 #TODO: Offer mechanisms to easily avoid ambiguity (expr: expr '\+' expr etc.)
 #TODO: Change rule+ into "rule simp*" instead of "simp+"
 #TODO: Use PLY's ignore mechanism (=tokens return None) instead of post-filtering it myself?
+#TODO: Support Compiling grammars into a single parser python file
+#TODO: Multi-line comments
+#TODO: Support running multi-threaded
+#TODO: Better error handling (choose between prints and raising exception, setting threshold, etc.)
+#TODO: Better debug mode (set debug level, choose between prints and interactive debugging?)
 
 # -- Continual Tasks
 #TODO: Optimize for space
@@ -433,7 +438,7 @@ class TokValue(str):
 class LexerWrapper(object):
     def __init__(self, lexer, newline_tokens_names, newline_char='\n', ignore_token_names=(), reconstructable_input=False):
         self.lexer = lexer
-        self.newline_tokens_names = newline_tokens_names
+        self.newline_tokens_names = set(newline_tokens_names)
         self.ignore_token_names = ignore_token_names
         self.newline_char = newline_char
 

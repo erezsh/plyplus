@@ -6,6 +6,17 @@ Most parsers work by calling a function for each rule they identify, which proce
 Plyplus makes two uncommon separations: of code from grammar, and of processing from parsing.
 The result of this approach is (hopefully) a cleaner design, more powerful grammar processing, and a parser which is easier to write and to understand.
 
+    Features
+--------------
+ - Automatic line counting
+ - Readable errors
+ - Inline tokens (named, or anonymous with partial auto-naming)
+ - Rule operators mimicking regular expressions (supported: parentheses, '|', '*', '?', and '+')
+ - Nested grammars (a grammar within a grammar. Useful for HTML/CSS, for example)
+ - Debug mode (dumps debug information during parsing)
+ - Customizable parser output, defined in grammar
+ - Comes with a full, flexible, Python grammar
+
     Questions
 ---------------------
 
