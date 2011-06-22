@@ -1,22 +1,26 @@
-from pprint import pprint
-from plyplus import Grammar
-from visitors import Transformer
-#from sexp import Sub
+import sys, os
+sys.path.append('..')
 
-g = Grammar("""
+from pprint import pprint
+from operator import itemgetter, add, sub, mul, div, neg
+
+from plyplus import Grammar
+from sexp import Transformer
+
+calc_grammar = Grammar("""
     start: expression;
-    @expression: bin_op | un_op | parenthesis | NUMBER ;
+    @expression: bin_op | un_op | parenthesis | number ;
     parenthesis: '\(' expression '\)';
     bin_op: expression ('\+'|'-'|'\*'|'/') expression;
     un_op: '-' expression;
 
-    NUMBER: '[\d.]+';
+    number: '[\d.]+';
     PLUS: '\+';
     MINUS: '-';
     MUL: '\*';
     DIV: '/';
 
-    WS: '[ \t]+' {%ignore};
+    WS: '[ \t]+' (%ignore);
 
 ###
 self.precedence = (
@@ -24,40 +28,36 @@ self.precedence = (
     ('left','MUL','DIV'),
 )
 """)
-#self.literals = ['=','+','-','*','/', '(',')']
 
 class Calc(Transformer):
-    def default(self, exp):
-        return exp[1]
+    unary_operator_mapping = {
+            '-': neg,
+        }
 
-    def parenthesis(self, exp):
-        return exp[2]
+    bin_operator_mapping = {
+            '+': add,
+            '-': sub,
+            '*': mul,
+            '/': div,
+        }
+
+    start = itemgetter(1)   # start only has one member: expression
+    parenthesis = itemgetter(2) # get the expression between the parenthesis
+
+    def number(self, exp):
+        return float(exp[1])
 
     def un_op(self, exp):
-        operator = exp[1]
-        arg = float(exp[2])
-        if operator == '-':
-            return -arg
+        _, operator_symbol, arg = exp
 
-        raise NotImplementedError(
-                "Unknown unary operator: %s" % operator
-            )
+        operator = self.unary_operator_mapping[operator_symbol]
+        return operator(arg)
 
     def bin_op(self, exp):
-        operator = exp[2]
-        arg1, arg2 = float(exp[1]), float(exp[3])
-        if operator == '+':
-            return arg1 + arg2
-        elif operator == '-':
-            return arg1 - arg2
-        elif operator == '*':
-            return arg1 * arg2
-        elif operator == '/':
-            return arg1 / arg2
+        _, arg1, operator_symbol, arg2 = exp
 
-        raise NotImplementedError(
-                "Unknown binary operator: %s" % operator
-            )
+        operator = self.bin_operator_mapping[operator_symbol]
+        return operator(arg1, arg2)
 
 
 def main():
@@ -69,13 +69,17 @@ def main():
             break
         if s == '':
             break
-        tree = g.parse(s)
+        tree = calc_grammar.parse(s)
         print calc.transform(tree)
 
 def _test():
-    tree = g.parse("4.5-2+3*(-1/-2)")
+    s="4.5-2+3*(-1/-2)"
+    tree = calc_grammar.parse(s)
     pprint(tree)
-    print "Result:",Calc().transform(tree)
+    res = Calc().transform(tree)
+    print s,"=",res
+    assert res == 4
 
-_test()
-#main()
+
+#_test()
+main()
