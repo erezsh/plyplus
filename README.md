@@ -10,7 +10,7 @@ The result of this approach is (hopefully) a cleaner design, more powerful gramm
  - Automatic line counting
  - Readable errors
  - Inline tokens (named, or anonymous with partial auto-naming)
- - Rule operators mimicking regular expressions (supported: parentheses, '|', '*', '?', and '+')
+ - Rule operators mimicking regular expressions (supported: parentheses, '|', '\*', '?', and '+')
  - Nested grammars (a grammar within a grammar. Useful for HTML/CSS, for example)
  - Debug mode (dumps debug information during parsing)
  - Customizable parser output, defined in grammar
@@ -41,7 +41,7 @@ Now let's define the initial grammar:
 
 A grammar is a collection of rules and tokens. In this example, we only use implicit tokens, by putting them in quotations. Let's dissect this grammar, which contains two rules:
 
-Rule 1. --  start: name (',' name)* ;
+Rule 1. --  start: name (',' name)\* ;
 
 'start' is the rule's name. By default, parsing always starts with the 'start' rule.
 The rule specifies that it must begin with a rule called 'name', follow by a sequence of (comma, name). The asterisk means that this sequence can have any length, including zero. The rule ends with a semicolon, as all rules must.
@@ -57,9 +57,9 @@ Let's see the result of parsing with the grammar.
 
 The resulting list is of the format: [rulename, match-0, match-1 ... match-n ]
 You'll notice the output is a bit messy. Let's clean it up.
-1. 'simp_1_star' is the name of the implicit rule we created with the asterisk in 'start'. We can tell plyplus to expand it (i.e. move its matches to its parent) by using the @* operator.
+1. 'simp_1_star' is the name of the implicit rule we created with the asterisk in 'start'. We can tell plyplus to expand it (i.e. move its matches to its parent) by using the @\* operator.
 
-2. We don't need the commas. We can tell plyplus to get rid of extra tokens by using the filter_tokens option. Plyplus will get rid of any token that isn't defined individually in a rule (like 'name' is).
+2. We don't need the commas. We can tell plyplus to get rid of extra tokens by using the filter\_tokens option. Plyplus will get rid of any token that isn't defined individually in a rule (like 'name' is).
 
 Let's apply these changes and see the result:
 
@@ -106,6 +106,6 @@ SIMP_4 and SIMP_0 are the automatic name given to the bracket tokens. Had we def
 
 I hope this inspired you to play with Plyplus a bit, or even use it for your project.
 
-For more examples, check out the test module: http://github.com/erezsh/plyplus/blob/master/test/plyplus_test.py
+For more examples, check out the test module: http://github.com/erezsh/plyplus/blob/master/test/plyplus\_test.py
 
 If you have any questions or ideas, you can email my at: erez27+plyplus at gmail com
