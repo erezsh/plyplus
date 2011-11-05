@@ -520,9 +520,6 @@ class Grammar(object):
         self._ignore_tokens = set()
         self.lexer_postproc = None
         self._newline_value = '\n'
-        self.filter_tokens = filter_tokens
-        self.expand_all_repeaters = expand_all_repeaters
-        self.reconstructable_input = reconstructable
 
         if isinstance(grammar, file):
             # PLY turns "a.b" into "b", so gotta get rid of the dot.
@@ -554,6 +551,7 @@ class _Grammar(object):
         self.ignore_postproc=bool(options.pop('ignore_postproc', False))
         self.auto_filter_tokens=bool(options.pop('auto_filter_tokens', False))
         self.expand_all_repeaters=bool(options.pop('expand_all_repeaters', False))
+        self.reconstructable_input=bool(options.pop('reconstructable_input', False))
         if options:
             raise TypeError("Unknown options: %s"%options.keys())
 
