@@ -198,12 +198,6 @@ def test_into():
     assert g.parse('(a,b,c,x)') == ['start', 'a', 'b', 'c', 'x']
 #
 
-def test_python_into():
-    g = Grammar(file('python3.g'))
-    #print g.parse('exec a in b, c\n')
-    #print g.parse('global a, b, c\n')
-    #print g.parse('exec a in b, c\n')
-
 def test_python_with_filters():
     g = Grammar(file('python3.g'))
     #pprint(g.parse('f(1,2,3)\n'))
@@ -246,7 +240,6 @@ def test_config_parser():
     print res
 
 if __name__ == '__main__':
-    #test_python_into()
     test_config_parser()
     #test_auto_filtered_python()
     #sys.exit()
