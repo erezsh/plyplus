@@ -6,12 +6,19 @@ import grammar_parser
 
 from sexp import Visitor, Transformer, head, tail, is_sexp
 
+# NOTE - Major problem with reconstruction - if you omit tokens from the tree, how do you know whether to reconstruct them or not? 
+#        They have to be attached to elements in the tree, like fruits hanging from the branches
+#        It's not possible with lists (as it is now), because they don't support arbitrary attributes.
+#        The question is: How much slower will it be to make them instances?
+
+
 # -- Must!
 #TODO: Offer alternatives to PLY facilities: precedence, error, line-count
 #TODO: Allow empty rules
 #TODO: Support States
 #TODO: @ on start symbols should expand them (right now not possible because of technical issues)
 #      alternatively (but not as good?): add option to expand all 'start' symbols
+#TODO: reconstruct_whitespace option to optimize parsing when recontruct is True (default:True, optimized:False)
 
 # -- Nice to have
 #TODO: Recursive parsing
@@ -61,7 +68,7 @@ from sexp import Visitor, Transformer, head, tail, is_sexp
 #
 
 
-class ReconstructedLine(object):
+class _ReconstructedLine(object):
     DEFAULT_CHAR = ' ';
     def __init__(self, allow_overwrite=False):
         self.allow_overwrite = allow_overwrite
@@ -76,7 +83,7 @@ class ReconstructedLine(object):
     def __str__(self):
         return str(self.line)
 
-class ReconstructedText(object):
+class _ReconstructedText(object):
     def __init__(self, allow_overwrite=False):
         self.allow_overwrite = allow_overwrite
         self.lines = {}
@@ -89,7 +96,7 @@ class ReconstructedText(object):
             return
 
         if line not in self.lines:
-            self.lines[line] = ReconstructedLine(allow_overwrite=self.allow_overwrite)
+            self.lines[line] = _ReconstructedLine(allow_overwrite=self.allow_overwrite)
         self.lines[line].add_text(text, column)
     def __str__(self):
         text = []
@@ -101,9 +108,9 @@ class ReconstructedText(object):
                 text.append( '' )
         return '\n'.join(text)
 
-class ReconstructInput(Visitor):
+class _ReconstructInput(Visitor):
     def __init__(self):
-        self.text = ReconstructedText()
+        self.text = _ReconstructedText()
     def default(self, tree):
         for child in tail(tree):
             if not is_sexp(child) and child and child.strip():
