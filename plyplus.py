@@ -5,6 +5,7 @@ from ply import lex, yacc
 import grammar_parser
 
 from sexp import Visitor, Transformer, head, tail, is_sexp
+from strees import STree, SVisitor, STransformer, is_stree
 
 # -- Must!
 #TODO: Offer alternatives to PLY facilities: precedence, error, line-count
@@ -322,28 +323,27 @@ class ToPlyGrammar_Tranformer(Transformer):
         return list(tail(tree))
 
 
-class SimplifySyntaxTree_Visitor(Visitor):
+class SimplifySyntaxTree_Visitor(SVisitor):
     def __init__(self, rules_to_flatten, rules_to_expand):
         self.rules_to_flatten = set(rules_to_flatten)
         self.rules_to_expand = set(rules_to_expand)
-        Visitor.__init__(self)
+        SVisitor.__init__(self)
 
     def _flatten(self, tree):
-        for i in range(len(tree)-1, 0, -1):   # skips 0
-            if not is_sexp(tree[i]):
+        tail = tree.tail    # XXX speed optimization, not "safe" or pretty
+        for i, subtree in reversed(list(enumerate(tail))):   # reverse so changing tail won't affect indices
+            if not is_stree(subtree):
                 continue
-            assert len(tree[i])
+            assert subtree
             # -- Is empty branch? (list with len=1)
-            if len(tree[i]) == 1:
-                del tree[i] # removes empty branches
+            if not subtree.tail:
+                del tail[i] # removes empty branches
             # -- Is branch same rule as self and the rule should be flattened?
-            elif head(tree[i]) == head(tree) and head(tree[i]) in self.rules_to_flatten:
-                assert len(tree[i]), str(tree)
-                tree[i:i+1] = tail(tree[i])
+            elif subtree.head == tree.head and subtree.head in self.rules_to_flatten:
+                tail[i:i+1] = subtree.tail
             # -- Should rule be expanded?
-            elif head(tree[i]) in self.rules_to_expand:
-                assert len(tree[i]), str(tree)
-                tree[i:i+1] = tail(tree[i])
+            elif subtree.head in self.rules_to_expand:
+                tail[i:i+1] = subtree.tail
 
     def default(self, tree):
         self._flatten(tree)
@@ -361,11 +361,11 @@ class FilterSyntaxTree_Visitor(Visitor):
                     and (not neg_filter or i not in neg_filter)
                 ]
 
-class FilterTokens_Tranformer(Transformer):
+class FilterTokens_Tranformer(STransformer):
     def default(self, tree):
-        if len(tree) <= 2:
+        if len(tree.tail) <= 1:
             return tree
-        return [tree[0]] + [x for x in tail(tree) if is_sexp(x)]
+        return STree(tree.head, [x for x in tree.tail if is_stree(x)])
 
 class TokValue(str):
     #def __repr__(self):
@@ -485,6 +485,8 @@ class _Grammar(object):
         ExtractSubgrammars_Visitor(source_name, tab_filename, self.options).visit(grammar_tree)
         grammar_tree = SimplifyGrammar_Visitor(self.filters, expand_all_repeaters=self.expand_all_repeaters).visit(grammar_tree)
         ply_grammar_and_code = ToPlyGrammar_Tranformer().transform(grammar_tree)
+
+        self.STree = STree
 
         # code may be omitted
         if len(ply_grammar_and_code) == 2:
@@ -628,9 +630,9 @@ class _Grammar(object):
             self.rules_to_flatten.append( rule_name )
 
         if '?' in mods or '@' in mods:  # @ is here just for the speed-up
-            code = '\tp[0] = ([%r] + p[1:]) if len(p)>2 else p[1]' % rule_name
+            code = '\tp[0] = STree(%r, p[1:]) if len(p)>2 else p[1]' % rule_name
         else:
-            code = '\tp[0] = [%r] + p[1:]' % rule_name
+            code = '\tp[0] = STree(%r, p[1:])' % rule_name
         s = ('def p_%s(p):\n\t%r\n%s\nx = p_%s\n'
             %(rule_name, rule_def, code, rule_name))
         exec(s)
