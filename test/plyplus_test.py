@@ -246,6 +246,8 @@ def test_config_parser():
     print res
 
 if __name__ == '__main__':
+    test_python_lib()
+    sys.exit()
     #test_python_into()
     test_config_parser()
     #test_auto_filtered_python()
