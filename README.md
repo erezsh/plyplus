@@ -84,8 +84,8 @@ Well, that seems like a lot of overhead just to split a list, doesn't it? The be
             @list : '\[' item (',' item)@* '\]' ;   // Define a list
             @item : number | list ;                 // Define an item, provide nesting
             number: '\d+' ;
-            SPACES: '[ ]+' {%ignore} ;              // Ignore spaces
-            """, filter_tokens=True)
+            SPACES: '[ ]+' (%ignore) ;              // Ignore spaces
+            """, auto_filter_tokens=True)
 
     >>> res = list_parser.parse('[1, 2, [ [3,4], 5], [6,7   ] ]')
     >>> [x[1] for x in res[1:]]
