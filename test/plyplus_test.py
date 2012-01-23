@@ -1,6 +1,6 @@
 import sys, os
 import logging
-sys.path.append('..')
+sys.path.insert(0, os.path.abspath('..'))
 from plyplus import Grammar, TokValue
 from pprint import pprint
 
