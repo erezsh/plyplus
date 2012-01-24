@@ -14,6 +14,14 @@ class STree(object):
     def __repr__(self):
         return '%s(%s)' % (self.head, ','.join(map(repr,self.tail)))
 
+    def expand_kids(self, *indices):
+        for i in sorted(indices, reverse=True): # reverse so that changing tail won't affect indices
+            kid = self.tail[i]
+            self.tail[i:i+1] = kid.tail
+    def remove_kids(self, *indices):
+        for i in sorted(indices, reverse=True): # reverse so that changing tail won't affect indices
+            del self.tail[i]
+
 def is_stree(obj):
     return isinstance(obj, STree)
 
@@ -31,10 +39,10 @@ class SVisitor(object):
             if is_stree(branch):
                 self._visit(branch)
 
-        f = getattr(self, tree.head, self.default)
+        f = getattr(self, tree.head, self.__default__)
         return f(tree)
 
-    def default(self, tree):
+    def __default__(self, tree):
         return False
 
 class STransformer(object):
@@ -49,8 +57,8 @@ class STransformer(object):
 
         tree = STree(tree.head, branches)
 
-        f = getattr(self, tree.head, self.default)
+        f = getattr(self, tree.head, self.__default__)
         return f(tree)
 
-    def default(self, tree):
+    def __default__(self, tree):
         return tree  

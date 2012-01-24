@@ -98,14 +98,14 @@ def get_token_name(token, default):
 
 class GrammarException(Exception): pass
 
-class GetTokenDefs_Visitor(Visitor):
+class GetTokenDefs_Visitor(SVisitor):
     def __init__(self, dict_to_populate):
         self.tokendefs = dict_to_populate
 
     def tokendef(self, tree):
-        self.tokendefs[ tree[2] ] = tree[1]
+        self.tokendefs[ tree.tail[1] ] = tree.tail[0]
 
-class ExtractSubgrammars_Visitor(Visitor):
+class ExtractSubgrammars_Visitor(SVisitor):
     def __init__(self, parent_source_name, parent_tab_filename, parent_options):
         self.parent_source_name = parent_source_name
         self.parent_tab_filename = parent_tab_filename
@@ -114,13 +114,13 @@ class ExtractSubgrammars_Visitor(Visitor):
         self.last_tok = None
 
     def pre_tokendef(self, tok):
-        self.last_tok = tok[1]
+        self.last_tok = tok.tail[0]
     def subgrammar(self, tree):
         assert self.last_tok
         assert len(tree) == 2
         source_name = '%s:%s'%(self.parent_source_name, self.last_tok.lower())
         tab_filename = '%s_%s'%(self.parent_tab_filename, self.last_tok.lower())
-        subgrammar = _Grammar(tree[1], source_name, tab_filename, **self.parent_options)
+        subgrammar = _Grammar(tree.tail[0], source_name, tab_filename, **self.parent_options)
         tree[:] = ['subgrammarobj', subgrammar]
 
 class ApplySubgrammars_Visitor(Visitor):
@@ -133,14 +133,13 @@ class ApplySubgrammars_Visitor(Visitor):
                 assert parsed_tok[0] == 'start'
                 tree[i] = parsed_tok
 
-class SimplifyGrammar_Visitor(Visitor):
+class SimplifyGrammar_Visitor(SVisitor):
     ANON_RULE_ID = 'anon'
     ANON_TOKEN_ID = 'ANON'
 
-    def __init__(self, filters, expand_all_repeaters=False):
+    def __init__(self, expand_all_repeaters=False):
         self._count = 0
         self._rules_to_add = []
-        self.filters = filters
 
         self.default_rule_mod = '@' if expand_all_repeaters else '#'
 
@@ -157,12 +156,12 @@ class SimplifyGrammar_Visitor(Visitor):
         return s
 
     def _flatten(self, tree, name):
-        changed = False
-        for i in range(len(tree)-1, 0, -1):   # skips 0
-            if len(tree[i]) and head(tree[i]) == name:
-                tree[i:i+1] = tail(tree[i])
-                changed = True
-        return changed
+        to_expand = [i for i, subtree in enumerate(tree.tail) if is_stree(subtree) and subtree.head == name]
+        if to_expand:
+            tree.expand_kids(*to_expand)
+            return True
+        else:
+            return False
 
     def visit(self, tree):
         GetTokenDefs_Visitor(self.tokendefs).visit(tree)
@@ -172,7 +171,7 @@ class SimplifyGrammar_Visitor(Visitor):
     def _visit(self, tree):
         "_visit simplifies the tree as much as possible"
         # visit until nothing left to change (not the most efficient, but good enough)
-        while Visitor._visit(self, tree):
+        while SVisitor._visit(self, tree):
             pass
 
     def modtokenlist(self, tree):
@@ -189,13 +188,13 @@ class SimplifyGrammar_Visitor(Visitor):
 
         if self._rules_to_add:
             changed = True
-        tree += self._rules_to_add
+            tree.tail += self._rules_to_add
         self._rules_to_add = []
         return changed
 
     def oper(self, tree):
-        rule_operand = tree[1]
-        operator = tree[2]
+        rule_operand, operator = tree.tail
+
         if operator in ('*', '@*'):
             # a : b c* d;
             #  --> in theory
@@ -206,9 +205,9 @@ class SimplifyGrammar_Visitor(Visitor):
             # _c : _c c | c;
             new_name = self._get_new_rule_name() + '_star'
             mod = '@' if operator.startswith('@') else self.default_rule_mod
-            new_rule = ['ruledef', mod+new_name, ['rules_list', ['rule', rule_operand], ['rule', new_name, rule_operand]] ]
+            new_rule = STree('ruledef', [mod+new_name, STree('rules_list', [STree('rule', [rule_operand]), STree('rule', [new_name, rule_operand])]) ])
             self._rules_to_add.append(new_rule)
-            tree[:] = ['rules_list', ['rule', new_name], ['rule']]
+            tree.head, tree.tail = 'rules_list', [STree('rule', [new_name]), STree('rule', [])]
         elif operator in ('+', '@+'):
             # a : b c+ d;
             #  -->
@@ -216,11 +215,11 @@ class SimplifyGrammar_Visitor(Visitor):
             # _c : _c c | c;
             new_name = self._get_new_rule_name() + '_plus'
             mod = '@' if operator.startswith('@') else self.default_rule_mod
-            new_rule = ['ruledef', mod+new_name, ['rules_list', ['rule', rule_operand], ['rule', new_name, rule_operand]] ]
+            new_rule = STree('ruledef', [mod+new_name, STree('rules_list', [STree('rule', [rule_operand]), STree('rule', [new_name, rule_operand]) ] ) ] )
             self._rules_to_add.append(new_rule)
-            tree[:] = ['rule', new_name]
+            tree.head, tree.tail = 'rule', [new_name]
         elif operator == '?':
-            tree[:] = ['rules_list', rule_operand, ['rule']]
+            tree.head, tree.tail = 'rules_list', [rule_operand, STree('rule', [])]
         else:
             assert False, rule_operand
 
@@ -243,84 +242,68 @@ class SimplifyGrammar_Visitor(Visitor):
         if self._flatten(tree, 'rule'):
             changed = True
 
-        for i,child in enumerate(tail(tree)):
-            if head(child) == 'rules_list':
+        for i,child in enumerate(tree.tail):
+            if is_stree(child) and child.head == 'rules_list':
                 # found. now flatten
-                new_rules_list = ['rules_list']
-                for option in tail(child):
-                    new_rules_list.append(['rule'])
+                new_rules_list = []
+                for option in child.tail:
+                    new_rules_list.append(STree('rule', []))
                     # for each rule in rules_list
-                    for j,child2 in enumerate(tail(tree)):
+                    for j,child2 in enumerate(tree.tail):
                         if j == i:
-                            new_rules_list[-1].append(option)
+                            new_rules_list[-1].tail.append(option)
                         else:
-                            new_rules_list[-1].append(child2)
-                tree[:] = new_rules_list
+                            new_rules_list[-1].tail.append(child2)
+                tree.head, tree.tail = 'rules_list', new_rules_list
                 return True # changed
 
-        for i, child in tail(enumerate(tree)):
+        for i, child in enumerate(tree.tail):
             if isinstance(child, str) and child.startswith("'"):
                 try:
                     tok_name = self.tokendefs[child]
                 except KeyError:
                     tok_name = self._get_new_tok_name(child) # Add anonymous token
                     self.tokendefs[child] = tok_name
-                    self._rules_to_add.append(['tokendef', tok_name, child])
-                tree[i] = tok_name
+                    self._rules_to_add.append(STree('tokendef', [tok_name, child]))
+                tree.tail[i] = tok_name
                 changed = True
 
         return changed # Not changed
 
-    def rule_into(self, tree):  # XXX deprecated?
-        assert 2 <= len(tree) <= 3
-        if len(tree) > 2:
-            rule, filter_list = tree[1], tree[2]
-            new_name = self._get_new_rule_name()
-            new_rule = ['ruledef', '@'+new_name, ['rules_list', ['rule', rule]]]
-            self._rules_to_add.append(new_rule)
-            self.filters[new_name] = (
-                    map(int, (n for n in tail(filter_list) if not n.startswith('^'))),
-                    map(int, (n[1:] for n in tail(filter_list) if n.startswith('^')))
-                )
-            tree[:] = ['rule', new_name]
-            return True
-        else:
-            tree[:] = tree[1]
-
     def rules_list(self, tree):
         return self._flatten(tree, 'rules_list')
 
-class ToPlyGrammar_Tranformer(Transformer):
+class ToPlyGrammar_Tranformer(STransformer):
     """Transforms grammar into ply-compliant grammar
     This is only a partial transformation that should be post-processd in order to apply
     XXX Probably a bad class name
     """
     def rules_list(self, tree):
-        return '\n\t| '.join(tail(tree))
+        return '\n\t| '.join(tree.tail)
 
     def rule(self, tree):
-        return ' '.join(tail(tree))
+        return ' '.join(tree.tail)
 
     def extrule(self, tree):
-        return ' '.join(tail(tree))
+        return ' '.join(tree.tail)
 
     def oper(self, tree):
-        return '(%s)%s'%(' '.join(tree[1:-1]), tree[-1])
+        return '(%s)%s'%(' '.join(tree.tail[:-1]), tree.tail[-1])
 
     def ruledef(self, tree):
-        return 'rule', tree[1], '%s\t: %s'%(tree[1], tree[2])
+        return STree('rule', (tree.tail[0], '%s\t: %s'%(tree.tail[0], tree.tail[1])))
 
     def tokendef(self, tree):
-        if len(tree) > 3:
-            return 'token_with_mods', tree[1], [tree[2], tree[3]]
+        if len(tree.tail) > 2:
+            return STree('token_with_mods', [tree.tail[0], tree.tail[1:]])
         else:
-            return 'token', tree[1], tree[2]
+            return STree('token', tree.tail)
 
     def grammar(self, tree):
-        return list(tail(tree))
+        return tree.tail
 
     def extgrammar(self, tree):
-        return list(tail(tree))
+        return tree.tail
 
 
 class SimplifySyntaxTree_Visitor(SVisitor):
@@ -330,6 +313,7 @@ class SimplifySyntaxTree_Visitor(SVisitor):
         SVisitor.__init__(self)
 
     def _flatten(self, tree):
+        # TODO: expand_kids, remove_kids
         tail = tree.tail    # XXX speed optimization, not "safe" or pretty
         for i, subtree in reversed(list(enumerate(tail))):   # reverse so changing tail won't affect indices
             if not is_stree(subtree):
@@ -345,24 +329,11 @@ class SimplifySyntaxTree_Visitor(SVisitor):
             elif subtree.head in self.rules_to_expand:
                 tail[i:i+1] = subtree.tail
 
-    def default(self, tree):
+    def __default__(self, tree):
         self._flatten(tree)
 
-class FilterSyntaxTree_Visitor(Visitor):
-    def __init__(self, filters):
-        self.filters = filters
-
-    def default(self, tree):
-        if head(tree) in self.filters:
-            pos_filter, neg_filter = self.filters[head(tree)]
-            neg_filter = [x if x>=0 else x+len(tree) for x in neg_filter]
-            tree[1:] = [x for i,x in tail(enumerate(tree))
-                    if (not pos_filter or i in pos_filter)
-                    and (not neg_filter or i not in neg_filter)
-                ]
-
 class FilterTokens_Tranformer(STransformer):
-    def default(self, tree):
+    def __default__(self, tree):
         if len(tree.tail) <= 1:
             return tree
         return STree(tree.head, [x for x in tree.tail if is_stree(x)])
@@ -481,9 +452,8 @@ class _Grammar(object):
         self._newline_value = '\n'
 
         self.subgrammars = {}
-        self.filters = {}
         ExtractSubgrammars_Visitor(source_name, tab_filename, self.options).visit(grammar_tree)
-        grammar_tree = SimplifyGrammar_Visitor(self.filters, expand_all_repeaters=self.expand_all_repeaters).visit(grammar_tree)
+        grammar_tree = SimplifyGrammar_Visitor(expand_all_repeaters=self.expand_all_repeaters).visit(grammar_tree)
         ply_grammar_and_code = ToPlyGrammar_Tranformer().transform(grammar_tree)
 
         self.STree = STree
@@ -496,7 +466,9 @@ class _Grammar(object):
             code = ''
         ply_grammar = ply_grammar_and_code[0]
 
-        for type, name, defin in ply_grammar:
+        for x in ply_grammar:
+            print x
+            type, (name, defin) = x.head, x.tail
             if type=='token':
                 assert defin[0] == "'"
                 assert defin[-1] == "'"
@@ -537,8 +509,6 @@ class _Grammar(object):
         tree = self.parser.parse(text, lexer=self.lexer)
         if not tree:
             raise Exception("Parse error!")
-        if self.filters:
-            FilterSyntaxTree_Visitor(self.filters).visit(tree)
 
         # Apply subgrammars
         if self.subgrammars:
@@ -565,19 +535,19 @@ class _Grammar(object):
         re_defin, token_features = defin
 
         token_added = False
-        if head(token_features) == 'subgrammarobj':
-            assert len(token_features) == 2
-            self.subgrammars[name] = token_features[1]
-        elif head(token_features) == 'tokenmods':
-            for token_mod in tail(token_features):
-                mod, modtokenlist = tail(token_mod)
+        if token_features.head == 'subgrammarobj':
+            assert len(token_features.tail) == 1
+            self.subgrammars[name] = token_features.tail[0]
+        elif token_features.head == 'tokenmods':
+            for token_mod in token_features.tail:
+                mod, modtokenlist = token_mod.tail
 
                 if mod == '%unless':
                     assert not token_added, "token already added, can't issue %unless"
                     unless_toks_dict = {}
-                    for modtoken in tail(modtokenlist):
-                        assert head(modtoken) == 'token'
-                        modtok_name, modtok_value = tail(modtoken)
+                    for modtoken in modtokenlist.tail:
+                        assert modtoken.head == 'token'
+                        modtok_name, modtok_value = modtoken.tail
 
                         self.add_token(modtok_name, modtok_value)
 
@@ -598,16 +568,16 @@ class _Grammar(object):
                     token_added = True
 
                 elif mod == '%newline':
-                    assert len(modtokenlist) == 1
+                    assert len(modtokenlist.tail) == 0
                     self._newline_tokens.add(name)
 
                 elif mod == '%ignore':
-                    assert len(modtokenlist) == 1
+                    assert len(modtokenlist.tail) == 0
                     self._ignore_tokens.add(name)
                 else:
                     raise GrammarException("Unknown token modifier: %s" % mod)
         else:
-            raise GrammarException("Unknown token feature: %s" % head(token_features))
+            raise GrammarException("Unknown token feature: %s" % token_features.head)
 
         if not token_added:
             self.add_token(name, re_defin)
