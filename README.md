@@ -52,32 +52,31 @@ The rule specifies that it must begin with a rule called 'name', follow by a seq
 
 Rule 2. -- name: '\w+' ;
 
-The rule 'name' (as referred to by start), contains just one token. The reason for having this rule, instead of just defining this token in 'start', will be clear later on. The token is defined using a regular expression (all tokens are regexps), and matches words (any sequence of one or more letters).
+The rule 'name' (as referred to by start), contains just one token. The token is defined using a regular expression (all tokens are regexps), and matches words (any sequence of one or more letters). Note that we defined it in a new rule, instead of defining it anonymously in 'start', because plyplus filters the output for tokens don't reside within their own rule. The rationale is that most tokens are useless punctuation, and in the cases that they aren't, the rule is useful to explain their significance.
 
 Let's see the result of parsing with the grammar.
 
     >>> list_parser.parse('cat,milk,dog')
-    start(name('cat'), _anon_1_star(',', name('milk'), ',', name('dog')))
+    start(name('cat'), _anon_1_star(name('milk'), name('dog')))
 
-The result is a STree instance, with a 'head' attribute of 'start' and a tail containing the matches, some of which are strings, and some of which are more STree instances.
-You'll notice the output is a bit messy. Let's clean it up.
+The result is a STree instance, with a 'head' attribute of 'start' and a 'tail' attribute which is a list of nested STree instances.
 
-1. 'simp_1_star' is the name of the implicit rule we created with the asterisk in 'start'. We can tell plyplus to expand it (i.e. move its matches to its parent) by using the @\* operator.
+It's simple to understand, but what is \_anon\_1\_star? It's the name of the implicit rule we created with the asterisk in 'start'. We can tell plyplus to expand it (i.e. move its matches to its parent) by using the @\* operator.
 
-2. We don't need the commas. We can tell plyplus to get rid of extra tokens by using the filter\_tokens option. Plyplus will get rid of any token that isn't defined individually in a rule (like 'name' is).
+( Note: It's possible to get the commas as well ("punctuation tokens"), by instanciating Grammar with auto\_filter\_tokens=False )
 
-Let's apply these changes and see the result:
+Let's apply change the operator and see the result:
 
-    >>> list_parser = Grammar(r"start: name (',' name)@* ; name: '\w+' ;", filter_tokens=True)
+    >>> list_parser = Grammar(r"start: name (',' name)@* ; name: '\w+' ;")
     >>> list_parser.parse('cat,milk,dog')
-    ['start', ['name', 'cat'], ['name', 'milk'], ['name', 'dog']]
+    start(name('cat'), name('milk'), name('dog'))
 
-That's much better, and we can apply a simple list comprehension to get the list data:
+That's cleaner! And now we can apply a simple list comprehension to get the list data:
 
-    >>> [x[1] for x in _[1:]]
+    >>> [x.tail[0] for x in _.tail]
     ['cat', 'milk', 'dog']
 
-Well, that seems like a lot of overhead just to split a list, doesn't it? The beauty of using grammars is how easy it is to add a lot of complexity. Now that we know the basics, let's write a grammar that takes a string of nested python-ish lists and returns a flat list of all the numbers in it.
+Well, that seems like a lot of overhead just to split a list, doesn't it? But the beauty of using grammars is in how easy it is to add a lot of complexity. Now that we know the basics, let's write a grammar that takes a string of nested python-ish lists and returns a flat list of all the numbers in it.
 
     >>> list_parser = Grammar("""
             start: list ;                           // We only match a list
@@ -85,10 +84,10 @@ Well, that seems like a lot of overhead just to split a list, doesn't it? The be
             @item : number | list ;                 // Define an item, provide nesting
             number: '\d+' ;
             SPACES: '[ ]+' (%ignore) ;              // Ignore spaces
-            """, auto_filter_tokens=True)
+            """)
 
     >>> res = list_parser.parse('[1, 2, [ [3,4], 5], [6,7   ] ]')
-    >>> [x[1] for x in res[1:]]
+    >>> [x.tail[0] for x in _.tail]
     ['1', '2', '3', '4', '5', '6', '7']
 
 This example contained some new elements, so here they are briefly:
@@ -104,7 +103,7 @@ The last example (for now) shows Plyplus' error handling and forgiving nature (l
     >>> list_parser.parse('1, 2, [ [3,4], 5], [6,7   ]')
     Syntax error in input at '1' (type SIMP_4) line 1 col 1
     Syntax error in input at ',' (type SIMP_0) line 1 col 18
-    ['start', ['number', '6'], ['number', '7']]
+    start(number('6'), number('7'))
 
 Plyplus yells that it didn't expect a '1' at this point. However, it keep on going. It get confused again at the 4th comma, but then pulls itself together and continues parsing the last list properly, returning 6 and 7.
 SIMP\_4 and SIMP\_0 are the automatic name given to the bracket tokens. Had we defined them explicitly we would get even better error messages.
