@@ -4,7 +4,6 @@ from ply import lex, yacc
 
 import grammar_parser
 
-from sexp import Visitor, Transformer, head, tail, is_sexp
 from strees import STree, SVisitor, STransformer, is_stree
 
 # -- Must!
@@ -117,21 +116,21 @@ class ExtractSubgrammars_Visitor(SVisitor):
         self.last_tok = tok.tail[0]
     def subgrammar(self, tree):
         assert self.last_tok
-        assert len(tree) == 2
+        assert len(tree.tail) == 1
         source_name = '%s:%s'%(self.parent_source_name, self.last_tok.lower())
         tab_filename = '%s_%s'%(self.parent_tab_filename, self.last_tok.lower())
         subgrammar = _Grammar(tree.tail[0], source_name, tab_filename, **self.parent_options)
-        tree[:] = ['subgrammarobj', subgrammar]
+        tree.head, tree.tail = 'subgrammarobj', [subgrammar]
 
-class ApplySubgrammars_Visitor(Visitor):
+class ApplySubgrammars_Visitor(SVisitor):
     def __init__(self, subgrammars):
         self.subgrammars = subgrammars
     def default(self, tree):
-        for i,tok in tail(enumerate(tree)):
+        for i,tok in enumerate(tree.tail):
             if type(tok) == TokValue and tok.type in self.subgrammars:
                 parsed_tok = self.subgrammars[tok.type].parse(tok)
                 assert parsed_tok[0] == 'start'
-                tree[i] = parsed_tok
+                tree.tail[i] = parsed_tok
 
 class SimplifyGrammar_Visitor(SVisitor):
     ANON_RULE_ID = 'anon'
@@ -192,6 +191,11 @@ class SimplifyGrammar_Visitor(SVisitor):
         self._rules_to_add = []
         return changed
 
+    def _add_recurse_rule(self, mod, name, repeated_expr):
+        new_rule = STree('ruledef', [mod+name, STree('rules_list', [STree('rule', [repeated_expr]), STree('rule', [name, repeated_expr])]) ])
+        self._rules_to_add.append(new_rule)
+        return new_rule
+
     def oper(self, tree):
         rule_operand, operator = tree.tail
 
@@ -205,8 +209,7 @@ class SimplifyGrammar_Visitor(SVisitor):
             # _c : _c c | c;
             new_name = self._get_new_rule_name() + '_star'
             mod = '@' if operator.startswith('@') else self.default_rule_mod
-            new_rule = STree('ruledef', [mod+new_name, STree('rules_list', [STree('rule', [rule_operand]), STree('rule', [new_name, rule_operand])]) ])
-            self._rules_to_add.append(new_rule)
+            self._add_recurse_rule(mod, new_name, rule_operand)
             tree.head, tree.tail = 'rules_list', [STree('rule', [new_name]), STree('rule', [])]
         elif operator in ('+', '@+'):
             # a : b c+ d;
@@ -215,8 +218,7 @@ class SimplifyGrammar_Visitor(SVisitor):
             # _c : _c c | c;
             new_name = self._get_new_rule_name() + '_plus'
             mod = '@' if operator.startswith('@') else self.default_rule_mod
-            new_rule = STree('ruledef', [mod+new_name, STree('rules_list', [STree('rule', [rule_operand]), STree('rule', [new_name, rule_operand]) ] ) ] )
-            self._rules_to_add.append(new_rule)
+            self._add_recurse_rule(mod, new_name, rule_operand)
             tree.head, tree.tail = 'rule', [new_name]
         elif operator == '?':
             tree.head, tree.tail = 'rules_list', [rule_operand, STree('rule', [])]
@@ -313,21 +315,16 @@ class SimplifySyntaxTree_Visitor(SVisitor):
         SVisitor.__init__(self)
 
     def _flatten(self, tree):
-        # TODO: expand_kids, remove_kids
-        tail = tree.tail    # XXX speed optimization, not "safe" or pretty
-        for i, subtree in reversed(list(enumerate(tail))):   # reverse so changing tail won't affect indices
-            if not is_stree(subtree):
-                continue
-            assert subtree
-            # -- Is empty branch? (list with len=1)
-            if not subtree.tail:
-                del tail[i] # removes empty branches
-            # -- Is branch same rule as self and the rule should be flattened?
-            elif subtree.head == tree.head and subtree.head in self.rules_to_flatten:
-                tail[i:i+1] = subtree.tail
-            # -- Should rule be expanded?
-            elif subtree.head in self.rules_to_expand:
-                tail[i:i+1] = subtree.tail
+        # Expand/Flatten rules if requested in grammar
+        to_expand = [i for i, subtree in enumerate(tree.tail) if is_stree(subtree) and (
+                        (subtree.head == tree.head and subtree.head in self.rules_to_flatten)
+                        or (subtree.head in self.rules_to_expand)
+                    ) ]
+        tree.expand_kids(*to_expand)
+
+        # Remove empty trees ( XXX not strictly necessary, just cleaner... should I keep them?)
+        to_remove = [i for i, subtree in enumerate(tree.tail) if is_stree(subtree) and not subtree.tail]
+        tree.remove_kids(*to_remove)
 
     def __default__(self, tree):
         self._flatten(tree)
@@ -436,7 +433,7 @@ class _Grammar(object):
         self.debug=bool(options.pop('debug', False))
         self.just_lex=bool(options.pop('just_lex', False))
         self.ignore_postproc=bool(options.pop('ignore_postproc', False))
-        self.auto_filter_tokens=bool(options.pop('auto_filter_tokens', False))
+        self.auto_filter_tokens=bool(options.pop('auto_filter_tokens', True))
         self.expand_all_repeaters=bool(options.pop('expand_all_repeaters', False))
         if options:
             raise TypeError("Unknown options: %s"%options.keys())
@@ -467,7 +464,6 @@ class _Grammar(object):
         ply_grammar = ply_grammar_and_code[0]
 
         for x in ply_grammar:
-            print x
             type, (name, defin) = x.head, x.tail
             if type=='token':
                 assert defin[0] == "'"

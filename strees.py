@@ -6,13 +6,6 @@ class STree(object):
         self.head = head
         self.tail = tail
 
-    def __len__(self):
-        raise Exception('len')
-    def __nonzero__(self):
-        return True    # XXX ???
-
-    def __repr__(self):
-        return '%s(%s)' % (self.head, ','.join(map(repr,self.tail)))
 
     def expand_kids(self, *indices):
         for i in sorted(indices, reverse=True): # reverse so that changing tail won't affect indices
@@ -21,6 +14,17 @@ class STree(object):
     def remove_kids(self, *indices):
         for i in sorted(indices, reverse=True): # reverse so that changing tail won't affect indices
             del self.tail[i]
+
+    def __len__(self):
+        raise Exception('len')
+    def __nonzero__(self):
+        return True    # XXX ???
+    def __eq__(self, other):
+        return self.head == other.head and self.tail == other.tail
+
+    def __repr__(self):
+        return '%s(%s)' % (self.head, ', '.join(map(repr,self.tail)))
+                    
 
 def is_stree(obj):
     return isinstance(obj, STree)

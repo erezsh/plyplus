@@ -57,9 +57,9 @@ The rule 'name' (as referred to by start), contains just one token. The reason f
 Let's see the result of parsing with the grammar.
 
     >>> list_parser.parse('cat,milk,dog')
-    ['start', ['name', 'cat'], ['simp_1_star', ',', ['name', 'milk'], ',', ['name', 'dog']]]
+    start(name('cat'), _anon_1_star(',', name('milk'), ',', name('dog')))
 
-The resulting list is of the format: [rulename, match-0, match-1 ... match-n ]
+The result is a STree instance, with a 'head' attribute of 'start' and a tail containing the matches, some of which are strings, and some of which are more STree instances.
 You'll notice the output is a bit messy. Let's clean it up.
 
 1. 'simp_1_star' is the name of the implicit rule we created with the asterisk in 'start'. We can tell plyplus to expand it (i.e. move its matches to its parent) by using the @\* operator.

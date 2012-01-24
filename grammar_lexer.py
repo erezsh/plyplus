@@ -14,7 +14,6 @@ tokens = (
         'SEMICOLON',
         'REGEXP',
         'SECTION',
-        'INTO',
         'LCURLY',
         'RCURLY',
         'NUMBER',
@@ -33,7 +32,6 @@ t_COLON = ':'
 t_SEMICOLON = ';'
 t_REGEXP = r"'.*?[^\\]'"
 t_SECTION = '\#\#\#(.|\\n)*'
-t_INTO = '=>'
 t_LCURLY = '{'
 t_RCURLY = '}'
 t_NUMBER = '\^?-?\d+'

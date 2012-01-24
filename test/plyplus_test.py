@@ -63,19 +63,20 @@ def test2():
 
 def test3():
     # Multiple parsers and colliding tokens
-    g = Grammar("start: B A ; B: '12'; A: '1'; ")
-    g2 = Grammar("start: B A; B: '12'; A: '2'; ")
+    g = Grammar("start: B A ; B: '12'; A: '1'; ", auto_filter_tokens=False)
+    g2 = Grammar("start: B A; B: '12'; A: '2'; ", auto_filter_tokens=False)
     x = g.parse('121')
-    assert x == ['start', '12', '1'], x
+    assert x.head == 'start' and x.tail == ['12', '1'], x
     x = g2.parse('122')
-    assert x == ['start', '12', '2'], x
+    assert x.head == 'start' and x.tail == ['12', '2'], x
 
 def test4():
     g = Grammar("start: '\(' name_list (COMMA MUL NAME)? '\)'; @name_list: NAME | name_list COMMA NAME ;  MUL: '\*'; COMMA: ','; NAME: '\w+'; ")
     l = g.parse('(a,b,c,*x)')
 
     g = Grammar("start: '\(' name_list (COMMA MUL NAME)? '\)'; @name_list: NAME | name_list COMMA NAME ;  MUL: '\*'; COMMA: ','; NAME: '\w+'; ")
-    assert l == g.parse('(a,b,c,*x)')
+    l2 = g.parse('(a,b,c,*x)')
+    assert l == l2, '%s != %s' % (l,l2)
 
 
 def test5():
@@ -128,7 +129,7 @@ def test_python_parse():
         l = g.parse(file('calc.py').read())
         l = g.parse(file('../grammar_lexer.py').read())
         l = g.parse(file('../grammar_parser.py').read())
-        l = g.parse(file('../sexp.py').read())
+        l = g.parse(file('../strees.py').read())
         l = g.parse(file('python_indent_postlex.py').read())
     ##l = g.parse(file('parsetab.py').read())
 
@@ -246,12 +247,16 @@ def test_config_parser():
     print res
 
 if __name__ == '__main__':
-    test_python_lib()
-    sys.exit()
+    #test_python_lib()
+    #sys.exit()
     #test_python_into()
     test_config_parser()
     #test_auto_filtered_python()
     #sys.exit()
+
+    test3()
+    test4()
+    test5()
 
     test_python_lex()
     test_python_lex2()
@@ -262,9 +267,5 @@ if __name__ == '__main__':
     test_python_parse2(2)
     test_python_lib()
     test_python4ply_sample()
-    test3()
-    test4()
-    test5()
-    test_into()
     #test_python_with_filters()
     #test_python_lib_with_filters(PYTHON_LIB)
