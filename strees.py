@@ -27,7 +27,7 @@ class STree(object):
                     
 
 def is_stree(obj):
-    return isinstance(obj, STree)
+    return type(obj) is STree or isinstance(obj, STree)
 
 class SVisitor(object):
     def visit(self, tree):

@@ -125,11 +125,11 @@ class ExtractSubgrammars_Visitor(SVisitor):
 class ApplySubgrammars_Visitor(SVisitor):
     def __init__(self, subgrammars):
         self.subgrammars = subgrammars
-    def default(self, tree):
+    def __default__(self, tree):
         for i,tok in enumerate(tree.tail):
             if type(tok) == TokValue and tok.type in self.subgrammars:
                 parsed_tok = self.subgrammars[tok.type].parse(tok)
-                assert parsed_tok[0] == 'start'
+                assert parsed_tok.head == 'start'
                 tree.tail[i] = parsed_tok
 
 class SimplifyGrammar_Visitor(SVisitor):
@@ -154,13 +154,11 @@ class SimplifyGrammar_Visitor(SVisitor):
         self._count += 1
         return s
 
-    def _flatten(self, tree, name):
-        to_expand = [i for i, subtree in enumerate(tree.tail) if is_stree(subtree) and subtree.head == name]
+    def _flatten(self, tree):
+        to_expand = [i for i, subtree in enumerate(tree.tail) if is_stree(subtree) and subtree.head == tree.head]
         if to_expand:
             tree.expand_kids(*to_expand)
-            return True
-        else:
-            return False
+        return bool(to_expand)
 
     def visit(self, tree):
         GetTokenDefs_Visitor(self.tokendefs).visit(tree)
@@ -169,21 +167,12 @@ class SimplifyGrammar_Visitor(SVisitor):
 
     def _visit(self, tree):
         "_visit simplifies the tree as much as possible"
-        # visit until nothing left to change (not the most efficient, but good enough)
+        # visit until nothing left to change (not the most efficient, but good enough since it's only the grammar)
         while SVisitor._visit(self, tree):
             pass
 
-    def modtokenlist(self, tree):
-        return self._flatten(tree, 'modtokenlist')
-
-    def tokenmods(self, tree):
-        return self._flatten(tree, 'tokenmods')
-
-    def number_list(self, tree):
-        return self._flatten(tree, 'number_list')
-
     def grammar(self, tree):
-        changed = self._flatten(tree, 'grammar')
+        changed = self._flatten(tree)
 
         if self._rules_to_add:
             changed = True
@@ -241,7 +230,7 @@ class SimplifyGrammar_Visitor(SVisitor):
         #
         changed = False
 
-        if self._flatten(tree, 'rule'):
+        if self._flatten(tree):
             changed = True
 
         for i,child in enumerate(tree.tail):
@@ -272,9 +261,11 @@ class SimplifyGrammar_Visitor(SVisitor):
 
         return changed # Not changed
 
-    def rules_list(self, tree):
-        return self._flatten(tree, 'rules_list')
-
+    modtokenlist = _flatten
+    tokenmods = _flatten
+    number_list = _flatten
+    rules_list = _flatten
+                          
 class ToPlyGrammar_Tranformer(STransformer):
     """Transforms grammar into ply-compliant grammar
     This is only a partial transformation that should be post-processd in order to apply
@@ -295,6 +286,9 @@ class ToPlyGrammar_Tranformer(STransformer):
     def ruledef(self, tree):
         return STree('rule', (tree.tail[0], '%s\t: %s'%(tree.tail[0], tree.tail[1])))
 
+    def optiondef(self, tree):
+        return STree('option', tree.tail)
+
     def tokendef(self, tree):
         if len(tree.tail) > 2:
             return STree('token_with_mods', [tree.tail[0], tree.tail[1:]])
@@ -310,11 +304,10 @@ class ToPlyGrammar_Tranformer(STransformer):
 
 class SimplifySyntaxTree_Visitor(SVisitor):
     def __init__(self, rules_to_flatten, rules_to_expand):
-        self.rules_to_flatten = set(rules_to_flatten)
-        self.rules_to_expand = set(rules_to_expand)
-        SVisitor.__init__(self)
+        self.rules_to_flatten = frozenset(rules_to_flatten)
+        self.rules_to_expand = frozenset(rules_to_expand)
 
-    def _flatten(self, tree):
+    def __default__(self, tree):
         # Expand/Flatten rules if requested in grammar
         to_expand = [i for i, subtree in enumerate(tree.tail) if is_stree(subtree) and (
                         (subtree.head == tree.head and subtree.head in self.rules_to_flatten)
@@ -325,9 +318,6 @@ class SimplifySyntaxTree_Visitor(SVisitor):
         # Remove empty trees ( XXX not strictly necessary, just cleaner... should I keep them?)
         to_remove = [i for i, subtree in enumerate(tree.tail) if is_stree(subtree) and not subtree.tail]
         tree.remove_kids(*to_remove)
-
-    def __default__(self, tree):
-        self._flatten(tree)
 
 class FilterTokens_Tranformer(STransformer):
     def __default__(self, tree):
@@ -448,6 +438,7 @@ class _Grammar(object):
         self.lexer_postproc = None
         self._newline_value = '\n'
 
+        # -- Build Grammar --
         self.subgrammars = {}
         ExtractSubgrammars_Visitor(source_name, tab_filename, self.options).visit(grammar_tree)
         grammar_tree = SimplifyGrammar_Visitor(expand_all_repeaters=self.expand_all_repeaters).visit(grammar_tree)
@@ -456,36 +447,27 @@ class _Grammar(object):
         self.STree = STree
 
         # code may be omitted
-        if len(ply_grammar_and_code) == 2:
-            code = ply_grammar_and_code[1]
-        else:
-            assert len(ply_grammar_and_code) == 1
-            code = ''
-        ply_grammar = ply_grammar_and_code[0]
+        if len(ply_grammar_and_code) == 1:
+            ply_grammar_and_code.append('')
+
+        ply_grammar, code = ply_grammar_and_code
 
         for x in ply_grammar:
             type, (name, defin) = x.head, x.tail
-            if type=='token':
-                assert defin[0] == "'"
-                assert defin[-1] == "'"
-                self.add_token(name, defin)
-            elif type=='token_with_mods':
-                self.add_token_with_mods(name, defin)
-            elif type=='rule':
-                self.add_rule(name, defin)
-            elif type=='optiondef':
-                self.handle_option(name, defin)
-            else:
-                assert False, type
+            assert type in ('token', 'token_with_mods', 'rule', 'option'), "Can't handle type %s"%type
+            handler = getattr(self, '_add_%s' % type)
+            handler(name, defin)
 
         exec(code)
 
+        # -- Build lexer --
         lexer = lex.lex(module=self)
         lexer = LexerWrapper(lexer, newline_tokens_names=self._newline_tokens, newline_char=self._newline_value, ignore_token_names=self._ignore_tokens)
         if self.lexer_postproc and not self.ignore_postproc:
             lexer = self.lexer_postproc(lexer)
-
         self.lexer = lexer
+        
+        # -- Build Parser --
         if not self.just_lex:
             self.parser = yacc.yacc(module=self, debug=self.debug, tabmodule=tab_filename)
 
@@ -495,10 +477,11 @@ class _Grammar(object):
     def lex(self, text):
         self.lexer.input(text)
         toks = []
-        tok = self.lexer.token()
-        while tok:
-            toks.append(tok)
+        while True:
             tok = self.lexer.token()
+            if not tok:
+                break
+            toks.append(tok)
         return toks
 
     def parse(self, text):
@@ -516,7 +499,8 @@ class _Grammar(object):
 
         return tree
 
-    def handle_option(self, name, defin):
+    def _add_option(self, name, defin):
+        "Set an option"
         if name == '%newline_char':
             self._newline_value = eval(defin)   # XXX BAD BAD! I have TODO it differently
         else:
@@ -527,7 +511,7 @@ class _Grammar(object):
         assert token_def[0] == "'" == token_def[-1]
         return token_def[1:-1].replace(r"\'", "'")
 
-    def add_token_with_mods(self, name, defin):
+    def _add_token_with_mods(self, name, defin):
         re_defin, token_features = defin
 
         token_added = False
@@ -545,7 +529,7 @@ class _Grammar(object):
                         assert modtoken.head == 'token'
                         modtok_name, modtok_value = modtoken.tail
 
-                        self.add_token(modtok_name, modtok_value)
+                        self._add_token(modtok_name, modtok_value)
 
                         unless_toks_dict[ self._unescape_token_def(modtok_value) ] = modtok_name
 
@@ -576,14 +560,14 @@ class _Grammar(object):
             raise GrammarException("Unknown token feature: %s" % token_features.head)
 
         if not token_added:
-            self.add_token(name, re_defin)
+            self._add_token(name, re_defin)
 
-    def add_token(self, name, defin):
+    def _add_token(self, name, defin):
         self.tokens.append(name)
         setattr(self, 't_%s'%name, self._unescape_token_def(defin))
 
 
-    def add_rule(self, rule_name, rule_def):
+    def _add_rule(self, rule_name, rule_def):
         mods, name = re.match('([@#?]*)(.*)', rule_name).groups()
         if mods:
             assert rule_def[:len(mods)] == mods
