@@ -313,11 +313,13 @@ class SimplifySyntaxTree_Visitor(SVisitor):
                         (subtree.head == tree.head and subtree.head in self.rules_to_flatten)
                         or (subtree.head in self.rules_to_expand)
                     ) ]
-        tree.expand_kids(*to_expand)
+        if to_expand:
+            tree.expand_kids(*to_expand)
 
         # Remove empty trees ( XXX not strictly necessary, just cleaner... should I keep them?)
         to_remove = [i for i, subtree in enumerate(tree.tail) if is_stree(subtree) and not subtree.tail]
-        tree.remove_kids(*to_remove)
+        if to_remove:
+            tree.remove_kids(*to_remove)
 
 class FilterTokens_Tranformer(STransformer):
     def __default__(self, tree):
