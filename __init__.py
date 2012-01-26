@@ -1,2 +1,2 @@
-from plyplus import Grammar, Visitor, Transformer, head, tail, is_sexp
+from plyplus import Grammar, SVisitor, STransformer, is_stree
 

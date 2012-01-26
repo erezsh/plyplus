@@ -16,7 +16,6 @@ tokens = (
         'SECTION',
         'LCURLY',
         'RCURLY',
-        'NUMBER',
 #        'COMMENT',
     )
 
@@ -34,7 +33,6 @@ t_REGEXP = r"'.*?[^\\]'"
 t_SECTION = '\#\#\#(.|\\n)*'
 t_LCURLY = '{'
 t_RCURLY = '}'
-t_NUMBER = '\^?-?\d+'
 
 
 def t_COMMENT(t):
