@@ -24,6 +24,32 @@ class STree(object):
 
     def __repr__(self):
         return '%s(%s)' % (self.head, ', '.join(map(repr,self.tail)))
+
+    def _to_pydot(self, graph):
+        import pydot
+        color = hash(self.head) & 0xffffff
+        if not (color & 0x808080):
+            color |= 0x808080
+
+        def new_leaf(leaf):
+            node = pydot.Node(id(leaf), label=repr(leaf))
+            graph.add_node(node)
+            return node
+
+        subnodes = [kid._to_pydot(graph) if is_stree(kid) else new_leaf(kid) for kid in self.tail]
+        node = pydot.Node(id(self), style="filled", fillcolor="#%x"%color, label=self.head)
+        graph.add_node(node)
+
+        for subnode in subnodes:
+            graph.add_edge(pydot.Edge(node, subnode))
+
+        return node
+
+    def to_png_with_pydot(self, filename):
+        import pydot
+        graph = pydot.Dot(graph_type='digraph', rankdir="LR")
+        self._to_pydot(graph)
+        graph.write_png(filename)
                     
 
 def is_stree(obj):

@@ -98,6 +98,12 @@ This example contained some new elements, so here they are briefly:
 
 3. 'SPACES' is the first token we defined explicitly. It matches a sequence of spaces, and the special token flag '%ignore' tells plyplus not to include it when parsing (adding 'WHITESPACE+' everywhere would make the grammar very cumbersome, and slower).
 
+Finally, if we have pydot and graphviz installed, we can visualize the tree by typing:
+
+    >>> res.to_png_with_pydot('list_parser_tree.png')
+
+    ![pydot visualization](list_parser_tree.png "pydot visualization")
+
 The last example (for now) shows Plyplus' error handling and forgiving nature (largely the effect of using PLY as its engine). Let's say we forgot to open the brackets in the former sample input:
 
     >>> list_parser.parse('1, 2, [ [3,4], 5], [6,7   ]')

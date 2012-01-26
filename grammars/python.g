@@ -408,6 +408,6 @@ EOF: '<EOF>';
 %newline_char: '\n';    // default, can be omitted
 
 ###
-from python2_indent_postlex import PythonIndentTracker
+from grammars.python_indent_postlex import PythonIndentTracker
 self.lexer_postproc = PythonIndentTracker
 

@@ -1,6 +1,7 @@
 import sys, os
 import logging
 sys.path.insert(0, os.path.abspath('..'))
+sys.path.insert(0, os.path.abspath('../grammars'))
 from plyplus import Grammar, TokValue
 from pprint import pprint
 
@@ -130,7 +131,7 @@ def test_python_parse():
         l = g.parse(file('../grammar_lexer.py').read())
         l = g.parse(file('../grammar_parser.py').read())
         l = g.parse(file('../strees.py').read())
-        l = g.parse(file('python_indent_postlex.py').read())
+        l = g.parse(file('../grammars/python_indent_postlex.py').read())
     ##l = g.parse(file('parsetab.py').read())
 
         l = g.parse(file('../plyplus.py').read())
@@ -251,9 +252,9 @@ if __name__ == '__main__':
     test4()
     test5()
 
-    test_python_lex()
-    test_python_lex2()
-    test_python_lex3()
+    #test_python_lex()
+    #test_python_lex2()
+    #test_python_lex3()
     test_python_parse()
     test_python_parse2(0)
     test_python_parse2(1)
