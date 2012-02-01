@@ -1,4 +1,5 @@
 import re, os
+import types
 
 from ply import lex, yacc
 
@@ -325,7 +326,7 @@ class FilterTokens_Tranformer(STransformer):
     def __default__(self, tree):
         if len(tree.tail) <= 1:
             return tree
-        return STree(tree.head, [x for x in tree.tail if is_stree(x)])
+        return tree.__class__(tree.head, [x for x in tree.tail if is_stree(x)])
 
 class TokValue(str):
     #def __repr__(self):
@@ -454,13 +455,13 @@ class _Grammar(object):
 
         ply_grammar, code = ply_grammar_and_code
 
+        exec(code)
+
         for x in ply_grammar:
             type, (name, defin) = x.head, x.tail
             assert type in ('token', 'token_with_mods', 'rule', 'option'), "Can't handle type %s"%type
             handler = getattr(self, '_add_%s' % type)
             handler(name, defin)
-
-        exec(code)
 
         # -- Build lexer --
         lexer = lex.lex(module=self)
@@ -582,14 +583,14 @@ class _Grammar(object):
             self.rules_to_flatten.append( rule_name )
 
         if '?' in mods or '@' in mods:  # @ is here just for the speed-up
-            code = '\tp[0] = STree(%r, p[1:]) if len(p)>2 else p[1]' % rule_name
+            code = '\tp[0] = self.STree(%r, p[1:]) if len(p)>2 else p[1]' % (rule_name,)
         else:
-            code = '\tp[0] = STree(%r, p[1:])' % rule_name
-        s = ('def p_%s(p):\n\t%r\n%s\nx = p_%s\n'
+            code = '\tp[0] = self.STree(%r, p[1:])' % (rule_name,)
+        s = ('def p_%s(self, p):\n\t%r\n%s\nx = p_%s\n'
             %(rule_name, rule_def, code, rule_name))
         exec(s)
 
-        setattr(self, 'p_%s'%rule_name, x)
+        setattr(self, 'p_%s'%rule_name, types.MethodType(x, self))
 
 
     @staticmethod

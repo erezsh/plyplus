@@ -1,6 +1,7 @@
+from weakref import ref
 
 class STree(object):
-    __slots__ = 'head', 'tail'
+    #__slots__ = 'head', 'tail'
 
     def __init__(self, head, tail):
         self.head = head
@@ -19,11 +20,34 @@ class STree(object):
         raise Exception('len')
     def __nonzero__(self):
         return True    # XXX ???
+    def __hash__(self):
+        return hash((self.head, tuple(self.tail)))
     def __eq__(self, other):
-        return self.head == other.head and self.tail == other.tail
+        try:
+            return self.head == other.head and self.tail == other.tail
+        except AttributeError:
+            return False
 
     def __repr__(self):
         return '%s(%s)' % (self.head, ', '.join(map(repr,self.tail)))
+
+    def find_predicate(self, predicate):
+        l = []
+        if predicate(self):
+            l.append(self)
+        for kid in self.tail:
+            l += kid.find_predicate(predicate)
+        return l
+    def map(self, func, context=None):
+        if context is None:
+            context = [ func(self) ]
+        for kid in self.tail:
+            try:
+                kid.map(func, context)
+            except AttributeError:
+                pass
+            context.append( func(kid) )
+        return context
 
     def _to_pydot(self, graph):
         import pydot
@@ -50,6 +74,17 @@ class STree(object):
         graph = pydot.Dot(graph_type='digraph', rankdir="LR")
         self._to_pydot(graph)
         graph.write_png(filename)
+
+    def calc_parents(self):
+        self.parent = None
+        self.index_in_parent = None
+        for i, kid in enumerate(self.tail):
+            try:
+                kid.calc_parents()
+            except AttributeError:
+                pass
+            kid.parent = ref(self)
+            kid.index_in_parent = i
                     
 
 def is_stree(obj):
@@ -85,7 +120,7 @@ class STransformer(object):
                 for branch in tree.tail
             ]
 
-        tree = STree(tree.head, branches)
+        tree = tree.__class__(tree.head, branches)
 
         f = getattr(self, tree.head, self.__default__)
         return f(tree)

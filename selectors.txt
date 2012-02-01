@@ -1,0 +1,42 @@
+Basic idea is to do something like:
+>>> names = tree.find('func_def > name *:is-leaf')
+for a list of function names
+but what if we want a list of functions with names? (for example non-lambdas)
+Of course we can just use a 'parent' attribute, but
+a) we don't have one right now
+b) it can get icky quickly when the selector is complex
+c) and we want the selector to express everything
+So it should be possible to define which element it returns within the selector.
+
+So syntax:
+
+element can be
+  1. name
+  2. .class (to be added. note similar names always have similar classes)
+  3. (list, of, selectors)
+  4. /leaf_regex_match/
+  5. *
+
+elements can have modifiers:
+  1. :not
+  2. :index(x)
+  3. :index-for-type(x)
+  4. :is-parent
+  5. :is-leaf
+
+the can also have an operator:
+  6. element! yields that element match (instead of just last one specified)
+     It can be used many times inside a selector, yielding each element.
+
+a selector is a sequence of elements, separated by operators:
+  1. e1 e2  -> any e2 contained in e1
+  2. e1>e2  -> any e2 with a parent e1
+  3. e1+e2  -> any e2 immediately preceeded by e1
+  4. e1~e2  -> any e2 preceeded by e1
+  
+examples:
+    classdef > (funcdef, classdef)! > name
+    yields all named functions and classes immediately nested in a class
+
+    name > /[Aa].*/
+    returns all and any names starting with the letter 'a'
