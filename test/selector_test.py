@@ -73,6 +73,7 @@ def test_all():
     test_operators()
     test_lists()
     test_yield()
+    print "All done!"
 
 test_all()
 #for x in selector('branch /b$/').match(tree1):

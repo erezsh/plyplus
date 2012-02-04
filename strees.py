@@ -86,6 +86,9 @@ class STree(object):
             kid.parent = ref(self)
             kid.index_in_parent = i
                     
+    def select(self, s):
+        from selector import selector   # import loop, don't use internally
+        return selector(s).match(self)
 
 def is_stree(obj):
     return type(obj) is STree or isinstance(obj, STree)
