@@ -85,7 +85,14 @@ class STree(object):
                 pass
             kid.parent = ref(self)
             kid.index_in_parent = i
-                    
+    def calc_depth(self, depth=0):
+        self.depth = depth
+        for kid in self.tail:
+            try:
+                kid.calc_depth(depth + 1)
+            except AttributeError:
+                pass
+
     def select(self, s):
         from selector import selector   # import loop, don't use internally
         return selector(s).match(self)
@@ -123,10 +130,12 @@ class STransformer(object):
                 for branch in tree.tail
             ]
 
-        tree = tree.__class__(tree.head, branches)
+        new_tree = tree.__class__(tree.head, branches)
+        if hasattr(tree, 'depth'):
+            new_tree.depth = tree.depth # XXX ugly hack, need a general solution for meta-data (meta attribute?)
 
-        f = getattr(self, tree.head, self.__default__)
-        return f(tree)
+        f = getattr(self, new_tree.head, self.__default__)
+        return f(new_tree)
 
     def __default__(self, tree):
         return tree  
