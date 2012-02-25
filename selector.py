@@ -24,7 +24,7 @@ class _Match(object):
         self.match_track += other.match_track
 
     def get_result(self):
-        yields = [m for m,s in self.match_track if s.head=='elem' and len(s.tail)>1 and s.tail[-1].head=='yield']
+        yields = [m for m,s in self.match_track if s.head=='elem' and len(s.tail)>1 and s.tail[0].head=='yield']
         assert len(yields) <=1, yields
         return yields[0] if yields else self.match_track[-1][0]
 
@@ -66,7 +66,10 @@ class STreeSelector(STree):
         return [r.get_result() for r in res]    # lose match objects, localize yields
 
     def match__elem(self, other):
-        matches = self.tail[0]._match(other)
+        if self.tail[0].head == 'yield':
+            matches = self.tail[1]._match(other)
+        else:
+            matches = self.tail[0]._match(other)
         if len(self.tail)>1 and self.tail[1].head=='modifier':
             matches = filter(self.tail[1].match__modifier, matches)
         return [_Match(m, self) for m in matches]

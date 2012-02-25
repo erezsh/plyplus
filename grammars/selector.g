@@ -3,13 +3,13 @@ selector: selector_op? elem;
 selector_op: selector operator?;
 operator: '>' | '\+' | '~';
 
-elem: (elem_head | elem_class | elem_regexp | elem_any | LPAR selector_list RPAR) modifier? yield?;
+elem: yield? (elem_head | elem_class | elem_regexp | elem_any | LPAR selector_list RPAR) modifier?;
 
 modifier: modifier_name (LPAR index RPAR)?;
 
 modifier_name: MODIFIER;
 index: INDEX;
-yield: '!';
+yield: '=';
 
 elem_head: HEAD;
 elem_class: CLASS;

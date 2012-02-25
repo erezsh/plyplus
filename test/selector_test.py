@@ -61,11 +61,11 @@ def test_lists():
     assert set( selector('(/e/, (/a/,/b$/), /c/)').match(tree1) ) == set('abce')
 
 def test_yield():
-    assert list( selector('name! /a/').match(tree1) )[0].head == 'name'
-    assert len( selector('branch! /c/').match(tree1) ) == 3
-    assert set( selector('(name! /a/,name /b$/)').match(tree1) ) == set([STree('name', ['a']), 'b'])
-    assert set( selector('branch! branch branch').match(tree1) ) == set([tree1.tail[0]])
-    assert set( selector('(name,branch! branch branch)! /c/').match(tree1) ) == set([STree('name', ['c']), tree1.tail[0]])
+    assert list( selector('=name /a/').match(tree1) )[0].head == 'name'
+    assert len( selector('=branch /c/').match(tree1) ) == 3
+    assert set( selector('(=name /a/,name /b$/)').match(tree1) ) == set([STree('name', ['a']), 'b'])
+    assert set( selector('=branch branch branch').match(tree1) ) == set([tree1.tail[0]])
+    assert set( selector('=(name,=branch branch branch) /c/').match(tree1) ) == set([STree('name', ['c']), tree1.tail[0]])
 
 def test_all():
     test_elem()
