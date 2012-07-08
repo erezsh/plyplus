@@ -31,6 +31,8 @@ class _Match(object):
 
 class STreeSelector(STree):
     def match__elem_head(self, other):
+        if not hasattr(other, 'head'):
+            return []
         [expected_head] = self.tail
         return [other] if other.head == expected_head else []
 

@@ -266,7 +266,7 @@ class SimplifyGrammar_Visitor(SVisitor):
     tokenmods = _flatten
     number_list = _flatten
     rules_list = _flatten
-                          
+
 class ToPlyGrammar_Tranformer(STransformer):
     """Transforms grammar into ply-compliant grammar
     This is only a partial transformation that should be post-processd in order to apply
@@ -408,7 +408,7 @@ class Grammar(object):
             tab_filename = "parsetab_%s"%str(hash(grammar)%2**32)
             source = '<string>'
 
-        grammar_tree = grammar_parser.parse(grammar, debug=options.get('debug',False))
+        grammar_tree = grammar_parser.parse(grammar) #, debug=options.get('debug',False))
         if not grammar_tree:
             raise GrammarException("Parse Error")
 
@@ -469,7 +469,7 @@ class _Grammar(object):
         if self.lexer_postproc and not self.ignore_postproc:
             lexer = self.lexer_postproc(lexer)
         self.lexer = lexer
-        
+
         # -- Build Parser --
         if not self.just_lex:
             self.parser = yacc.yacc(module=self, debug=self.debug, tabmodule=tab_filename)
@@ -488,7 +488,7 @@ class _Grammar(object):
         return toks
 
     def parse(self, text):
-        tree = self.parser.parse(text, lexer=self.lexer)
+        tree = self.parser.parse(text, lexer=self.lexer, debug=self.debug)
         if not tree:
             raise Exception("Parse error!")
 

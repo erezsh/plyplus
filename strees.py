@@ -7,6 +7,10 @@ class STree(object):
         self.head = head
         self.tail = tail
 
+    def reset(self, head, tail):
+        "Warning: calculations done on tree will have to be manually re-run on the tail elements"    # XXX
+        self.head = head
+        self.tail = tail
 
     def expand_kids(self, *indices):
         for i in sorted(indices, reverse=True): # reverse so that changing tail won't affect indices
@@ -83,8 +87,11 @@ class STree(object):
                 kid.calc_parents()
             except AttributeError:
                 pass
-            kid.parent = ref(self)
-            kid.index_in_parent = i
+            try:
+                kid.parent = ref(self)
+                kid.index_in_parent = i
+            except AttributeError:
+                pass
     def calc_depth(self, depth=0):
         self.depth = depth
         for kid in self.tail:
@@ -138,4 +145,4 @@ class STransformer(object):
         return f(new_tree)
 
     def __default__(self, tree):
-        return tree  
+        return tree
