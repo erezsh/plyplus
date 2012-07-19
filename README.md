@@ -33,19 +33,19 @@ A. Ease of use. See the example and judge for yourself.
 
 ## Tutorials
 
-Learn how to write a grammar for Plyplus at the [tutorial](tutorial.md)
+Learn how to write a grammar for Plyplus at the [tutorial](plyplus/blob/master/tutorial.md)
 
-Learn how to query the AST using [selectors](selectors.md)
+Learn how to query the AST using [selectors](plyplus/blob/master/selectors.md)
 
 ## Examples
 
-This section contains examples of plyplus usage. For a better explanation, check out [the tutorial](tutorial.md). If something is still not clear, feel free to email me and ask!
+This section contains examples of plyplus usage. For a better explanation, check out [the tutorial](plyplus/blob/master/tutorial.md). If something is still not clear, feel free to email me and ask!
 
 ### Parsing Python
 
 Let's list all the functions (or methods) in the os module.
 
-I will be querying the AST using [selectors](selectors.md), so click the link if you want to be able to follow (or maybe an understanding of CSS/JQuery is enough?).
+I will be querying the AST using [selectors](plyplus/blob/master/selectors.md), so click the link if you want to be able to follow (or maybe an understanding of CSS/JQuery is enough?).
 
     >>> import plyplus
     >>> g = plyplus.Grammar(file(r'e:\python\plyplus\grammars\python.g'))   # load grammar
@@ -77,7 +77,7 @@ Hard to read? Try looking at it visually! (requires pydot)
 
     >>> _.to_png_with_pydot(r'calling_popen.png')
 
-[calling\_popen.png](calling_popen.png)
+[calling\_popen.png](plyplus/blob/master/calling_popen.png)
 
 
 ## Afterword
