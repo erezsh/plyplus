@@ -124,14 +124,14 @@ decorators : decorator@+ ;
   ?arith_expr : term (add_symbol term)* ;
 
 
-  arglist : (argument COMMA)+?
-          ( argument COMMA?
+  arglist : (arg COMMA)@+?
+          ( arg COMMA?
           | args (COMMA kwargs)?
           | kwargs
           ) ;
 
 // XXX Overly permissive? (maybe gen_for belongs in arglist)
-  @argument : test (|gen_for|EQUAL test) ;
+  arg : test (|gen_for|EQUAL test) ;
 
   exprlist : expr (COMMA expr)* COMMA? ;
 

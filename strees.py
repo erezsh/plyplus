@@ -80,8 +80,9 @@ class STree(object):
         graph.write_png(filename)
 
     def calc_parents(self):
-        self.parent = None
-        self.index_in_parent = None
+        if not hasattr(self, 'parent'):
+            self.parent = None
+            self.index_in_parent = None
         for i, kid in enumerate(self.tail):
             try:
                 kid.calc_parents()

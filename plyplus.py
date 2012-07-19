@@ -1,3 +1,5 @@
+"Author: Erez Shinan, erezshin at gmail.com"
+
 import re, os
 import types
 

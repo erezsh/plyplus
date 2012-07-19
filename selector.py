@@ -90,7 +90,7 @@ class STreeSelector(STree):
                     yield x
             elif op == ' ': # travel back to root
                 to_check = []
-                parent = tree.parent()
+                parent = tree.parent()  # TODO: what happens if the parent is garbage-collected?
                 while parent is not None:
                     yield parent
                     parent = parent.parent() if parent.parent else None
