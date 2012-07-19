@@ -51,7 +51,9 @@ I will be querying the AST using [selectors](/erezsh/plyplus/blob/master/selecto
     >>> g = plyplus.Grammar(file(r'e:\python\plyplus\grammars\python.g'))   # load grammar
     >>> t = g.parse(file(r'c:\python27\lib\os.py').read())                  # read os.py
     >>> t.select('funcdef > name > *:is-leaf')
-    ['_get_exports_list', 'makedirs', 'removedirs', 'renames', 'walk', 'execl', 'execle', 'execlp', 'execlpe', 'execvp', 'execvpe', '_execvpe', 'unsetenv', '__init__', '__setitem__', '__getitem__', '__delitem__', '__delitem__', 'clear', 'pop', 'has_key', '__contains__', 'get', 'update', 'copy', '__init__', '__setitem__', 'update', '__delitem__', 'clear', 'pop', 'copy', 'getenv', '_exists', '_spawnvef', 'spawnv', 'spawnve', 'spawnvp', 'spawnvpe', 'spawnl', 'spawnle', 'spawnlp', 'spawnlpe', 'popen2', 'popen3', 'popen4', '_make_stat_result', '_pickle_stat_result', '_make_statvfs_result', '_pickle_statvfs_result', 'urandom']
+    ['_get_exports_list', 'makedirs', 'removedirs', 'renames', 'walk', 'execl', 'execle', 'execlp', 'execlpe', ...
+
+(Run it yourself for the full input)
 
 Now let's count how many times os.py calls isinstance:
 
@@ -71,7 +73,7 @@ Let's look at one of those calls. We'll need to select more context for that.
 More context?
 
     >>> _.parent().parent().parent()
-    funccall(attrget(name('subprocess'), name('Popen')), arglist(arg(name('cmd')), arg(name('shell'), funccall(name('isinstance'), arglist(arg(name('cmd')), arg(name('basestring'))))), arg(name('bufsize'), name('bufsize')), arg(name('stdin'), name('PIPE')), arg(name('stdout'), name('PIPE')), arg(name('close_fds'), name('True'))))
+    funccall(attrget(name('subprocess'), name('Popen')), arglist(arg(name('cmd')), arg(name('shell'), funccall(...
 
 Hard to read? Try looking at it visually! (requires pydot)
 

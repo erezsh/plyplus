@@ -33,7 +33,7 @@ One last thing worth noting: Selectors always return the last element. If you wa
 
 ## Some examples
 
-So how do we use them? Let's look at this Python expression from the [readme](/erezsh/plyplus/blob/master/readme.md)
+So how do we use them? Let's look at this Python expression from the [readme](/erezsh/plyplus/blob/master/README.md)
 
     funccall(attrget(name('subprocess'), name('Popen')), arglist(arg(name('cmd')), arg(name('shell'), funccall(name('isinstance'), arglist(arg(name('cmd')), arg(name('basestring'))))), arg(name('bufsize'), name('bufsize')), arg(name('stdin'), name('PIPE')), arg(name('stdout'), name('PIPE')), arg(name('close_fds'), name('True'))))
 
@@ -42,7 +42,7 @@ It's a little messy, so you can use [this visualization](/erezsh/plyplus/blob/ma
 Assuming it's stored in x, let's get all of the "name" heads:
 
     >>> x.select('name')
-    [name('subprocess'), name('Popen'), name('cmd'), name('shell'), name('isinstance '), name('cmd'), name('basestring'), name('bufsize'), name('bufsize'), name('std in'), name('PIPE'), name('stdout'), name('PIPE'), name('close_fds'), name('True')]
+    [name('subprocess'), name('Popen'), name('cmd'), name('shell'), name('isinstance '), name('cmd'), ...
 
 Simple enough. But suppose we just want the terminals? We can select them easily:
 
