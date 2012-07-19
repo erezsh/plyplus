@@ -90,6 +90,6 @@ Plyplus uses the [JQuery license](http://jquery.org/license). Briefly, it's lice
 
 I hope this readme inspired you to play with Plyplus a bit, and maybe even use it for your project.
 
-For more examples, check out the test module: http://github.com/erezsh/plyplus/blob/master/test/plyplus\_test.py
+For more examples, check out the [test module](/erezsh/plyplus/blob/master/test/plyplus_test.py)
 
 If you have any questions or ideas, please email me at erez27+plyplus at gmail com
