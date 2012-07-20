@@ -2,20 +2,20 @@ start: (section|NEWLINE)@+;
 section: SECTION NEWLINE (NEWLINE|option)@*;
 option: OPTION NEWLINE;
 
-SECTION: '\[[\w\s]+]'
+SECTION: '\[[^\[\]\n;]+]'
 {
     start: '\[' name ']';
-    name: '\w([\w\s]*\w)?';
+    name: '[^\[\]\n;]+';
     WS: '[\t \f]+' (%ignore);
 };
-OPTION: '[A-Za-z]\w*\s*[=:][^\n]+'
+OPTION: '[^=:\n;]+[=:][^\n]*'
 {
-    start: name VALUE;
-    name: '[A-Za-z]\w*';
-    VALUE: '[:=][^\n]*'
+    start: name VALUE?;
+    name: '[^=:\n;]+';
+    VALUE: '[:=][^\n;]*'
     {
         start: '[:=]' value;
-        value: '[^:=\n][^\n]*';
+        value: '[^:=\n;][^\n;]*';
     };
     WS: '[\t \f]+' (%ignore);
 };

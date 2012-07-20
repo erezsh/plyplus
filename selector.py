@@ -77,6 +77,8 @@ class STreeSelector(STree):
         return [_Match(m, self) for m in matches]
 
     def _travel_tree_by_op(self, tree, op):
+        if not hasattr(tree, 'parent') or tree.parent is None:
+            return  # XXX should I give out a warning?
         try:
             if op == '>':   # travel to parent
                 yield tree.parent()
