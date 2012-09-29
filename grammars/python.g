@@ -1,4 +1,4 @@
-start: (NEWLINE|stmt)+;
+start: (NEWLINE|stmt)@+;
 //module_header: string NEWLINE;
 
 //

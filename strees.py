@@ -1,5 +1,15 @@
 from weakref import ref
 
+def classify(seq, key=lambda x:x):
+    d = {}
+    for item in seq:
+        k = key(item)
+        if k not in d:
+            d[k] = [ ]
+        d[k].append( item )
+
+    return d
+
 class STree(object):
     #__slots__ = 'head', 'tail'
 
@@ -31,6 +41,21 @@ class STree(object):
             return self.head == other.head and self.tail == other.tail
         except AttributeError:
             return False
+
+    @property
+    def named_tail(self):
+        "Warning: Assumes 'tail' doesn't change"
+        if not hasattr(self, '_named_tail'):
+            self._named_tail = classify(self.tail, lambda e: e.head)
+        return self._named_tail
+    def leaf(self, leaf_head, default=KeyError):
+        try:
+            [r] = self.named_tail[leaf_head]
+        except KeyError:
+            if default == KeyError:
+                raise
+            r = default
+        return r
 
     def __repr__(self):
         return '%s(%s)' % (self.head, ', '.join(map(repr,self.tail)))
@@ -104,6 +129,9 @@ class STree(object):
     def select(self, s):
         from selector import selector   # import loop, don't use internally
         return selector(s).match(self)
+    def select1(self, s):
+        [r] = self.select(s)
+        return r
 
 def is_stree(obj):
     return type(obj) is STree or isinstance(obj, STree)
