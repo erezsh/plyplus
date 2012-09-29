@@ -3,6 +3,7 @@ from itertools import chain
 
 from strees import STree, is_stree
 from plyplus import Grammar
+import grammars
 
 def sum_list(l):
     return list(chain(*l))
@@ -146,6 +147,6 @@ class STreeSelector(STree):
 
 
 
-selector_grammar = Grammar(file(os.path.join(os.path.split(__file__)[0], 'grammars/selector.g')))
+selector_grammar = Grammar(grammars.open('selector.g'))
 def selector(s):
     return selector_grammar.parse(s)

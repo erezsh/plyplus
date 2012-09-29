@@ -47,8 +47,8 @@ We'll use Plyplus' grammar for Python, and play with os.py for a bit (though it 
 
 For starters, let's do something simple: Let's list all of the functions (or methods) in the os module. We'll query the AST using [selectors](/erezsh/plyplus/blob/master/docs/selectors.md), so click the link if you want to be able to follow (or maybe an understanding of CSS/JQuery is enough?).
 
-    >>> import plyplus
-    >>> g = plyplus.Grammar(file(r'e:\python\plyplus\grammars\python.g'))   # load grammar
+    >>> import plyplus, plyplus.grammars
+    >>> g = plyplus.Grammar(plyplus.grammars.open('python.g'))   # load python grammar
     >>> t = g.parse(file(r'c:\python27\lib\os.py').read())                  # read os.py
     >>> t.select('funcdef > name > *:is-leaf')
     ['_get_exports_list', 'makedirs', 'removedirs', 'renames', 'walk', 'execl', 'execle', 'execlp', 'execlpe', ...
@@ -87,7 +87,7 @@ INI files are too open-handed to be a good candidate for LR-parsing, but PlyPlus
 
 Let's parse an INI file that comes with numpy.
 
-    >>> g = plyplus.Grammar(file(r'e:\python\plyplus\grammars\config.g'))   # load grammar
+    >>> g = plyplus.Grammar(plyplus.grammars.open('config.g'))   # load config grammar
     >>> t = g.parse(file(r"C:\Python26\Lib\site-packages\numpy\core\lib\npy-pkg-config\npymath.ini").read())
 
 List the sections:
@@ -110,7 +110,7 @@ Let's pretty-print it! We can use a transformer to do it. A transformer is a tre
             value = tree.select('value *')[0]
             return '%s = %s' % (name, value)
         def section(self, tree):
-            name = tree.select('name *')[0]           
+            name = tree.select('name *')[0]
             return '[%s]\n\t%s' % (name, '\n\t'.join(tree.tail[1:]))
 
 Now that each rule has code to handle it, let's run it!

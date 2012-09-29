@@ -4,7 +4,7 @@ from distutils.core import setup
 setup(
     name = "PlyPlus",
     version = "0.1",
-    packages = ['plyplus', 'plyplus.test', 'grammars', 'examples', 'docs'], #find_packages(),
+    packages = ['plyplus', 'plyplus.test', 'plyplus.grammars', 'examples', 'docs'], #find_packages(),
     #scripts = ['say_hello.py'],
 
     requires = ['ply'], #['docutils>=0.3'],
