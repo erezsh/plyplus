@@ -54,7 +54,7 @@ Well, that seems like a lot of overhead just to split a list, doesn't it? But th
             """)
 
     >>> res = list_parser.parse('[1, 2, [ [3,4], 5], [6,7   ] ]')
-    >>> [x.tail[0] for x in _.tail]
+    >>> [x.tail[0] for x in res.tail]
     ['1', '2', '3', '4', '5', '6', '7']
 
 This example contained some new elements, so here they are briefly:
@@ -74,8 +74,8 @@ Finally, if we have pydot and graphviz installed, we can visualize the tree by t
 The last example (for now) shows Plyplus' error handling and forgiving nature (largely the effect of using PLY as its engine). Let's say we forgot to open the brackets in the former sample input:
 
     >>> list_parser.parse('1, 2, [ [3,4], 5], [6,7   ]')
-    Syntax error in input at '1' (type SIMP_4) line 1 col 1
-    Syntax error in input at ',' (type SIMP_0) line 1 col 18
+    Syntax error in input at '1' (type _ANON_4) line 1 col 1
+    Syntax error in input at ',' (type _COMMA_0) line 1 col 18
     start(number('6'), number('7'))
 
 Plyplus yells that it didn't expect a '1' at this point. However, it keep on going. It get confused again at the 4th comma, but then pulls itself together and continues parsing the last list properly, returning 6 and 7.
