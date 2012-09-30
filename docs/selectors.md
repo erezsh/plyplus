@@ -67,7 +67,7 @@ Wait! Why did we get "basestring" twice? And why is "isinstance" there? It's not
     
 How about all of the keyword arguments used? (notice they are pairs of names inside an "arg" head)
 
-    >>> arg =name + *
+    >>> x.select('arg =name + *')
     [name('isinstance'), name('shell'), name('bufsize'), name('stdin'), name('stdout'), name('close_fds')]
 
 ## Afterword

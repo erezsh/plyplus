@@ -106,16 +106,16 @@ Let's pretty-print it! We can use a transformer to do it. A transformer is a tre
 
     >>> class PrettyINI(plyplus.STransformer):
         def option(self, tree):
-            name = tree.select('name *')[0]
-            value = tree.select('value *')[0]
+            name = tree.select1('name *')   # select1 asserts only one result
+            value = tree.select1('value *')
             return '%s = %s' % (name, value)
         def section(self, tree):
-            name = tree.select('name *')[0]
+            name = tree.select1('name *')
             return '[%s]\n\t%s' % (name, '\n\t'.join(tree.tail[1:]))
 
 Now that each rule has code to handle it, let's run it!
 
-    >>> meta = t.select('=section /meta/')[0]
+    >>> meta = t.select1('=section /meta/')
     >>> print PrettyINI().transform( meta )
     [meta]
             Name = npymath
@@ -124,7 +124,7 @@ Now that each rule has code to handle it, let's run it!
 
 It works! Now that it's done, we can use it to output the rest of the file as well:
 
-    >>> print '\n'.join( PrettyINI().transform(t) )
+    >>> print '\n'.join( PrettyINI().transform(t).tail )
     ... (left as an excercise to the reader ;)
 
 
