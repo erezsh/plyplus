@@ -331,9 +331,19 @@ class FilterTokens_Tranformer(STransformer):
         return tree.__class__(tree.head, [x for x in tree.tail if is_stree(x)])
 
 class TokValue(str):
-    #def __repr__(self):
-    #    return repr("%s:%s|%s"%(self.line, self.column, self))
-    pass
+    def __new__(cls, s, type=None, line=None, column=None, pos_in_stream=None, index=None):
+        inst = str.__new__(cls,s)
+        inst.type = type
+        inst.line = line
+        inst.column = column
+        inst.pos_in_stream = pos_in_stream
+        inst.index = index
+        return inst
+
+    def __repr__(self):
+        if self.line and self.column:
+            return repr("%s:%s|%s"%(self.line, self.column, self))
+        return str.__repr__(self)
 
 class LexerWrapper(object):
     def __init__(self, lexer, newline_tokens_names, newline_char='\n', ignore_token_names=()):
@@ -352,6 +362,42 @@ class LexerWrapper(object):
         self._tok_count = 0
         return self.lexer.input(s)
 
+    def token(self):
+        # get a new token that shouldn't be ignored
+        while True:
+            self._tok_count += 1
+
+            t = self.lexer.token()
+            if not t:
+                return t    # End of stream
+
+            try:
+                if t.type not in self.ignore_token_names:
+                    self._wrap_token(t)
+                    return t
+            finally:
+                # handle line and column
+                # must happen after assigning, because we change _lexer_pos_of_start_column
+                # in other words, we want to apply the token's effect to the lexer, not to itself
+                if t.type in self.newline_tokens_names:
+                    self._handle_newlines(t)
+
+
+    def _wrap_token(self, t):
+        tok_value = TokValue(t.value,
+                        line = self.lineno,
+                        column = t.lexpos-self._lexer_pos_of_start_column,
+                        pos_in_stream = t.lexpos,
+                        type = t.type,
+                        index = self._tok_count,
+                    )
+
+        if hasattr(t, 'lexer'):
+            t.lexer.lineno = self.lineno    # not self.lexer, because it may be another wrapper
+
+        t.lineno = self.lineno
+        t.value = tok_value
+
     def _handle_newlines(self, t):
         newlines = t.value.count(self.newline_char)
         self.lineno += newlines
@@ -360,42 +406,8 @@ class LexerWrapper(object):
             #newline_text, trailing_text = t.value.rsplit( self.newline_char, 1 )
             #self._lexer_pos_of_start_column = t.lexpos + len(newline_text)
             self._lexer_pos_of_start_column = t.lexpos + t.value.rindex(self.newline_char)
-        else:
-            self._lexer_pos_of_start_column = t.lexpos
-
-    def token(self):
-        # get a new token that shouldn't be ignored
-        while True:
-            t = self.lexer.token()
-            if not t:
-                return t
-            if t.type not in self.ignore_token_names:
-                break
-            if t.type in self.newline_tokens_names:
-                self._handle_newlines(t)
-
-        # create a tok_value
-        tok_value = TokValue(t.value)
-        tok_value.line = self.lineno
-        tok_value.column = t.lexpos-self._lexer_pos_of_start_column
-        tok_value.pos_in_stream = t.lexpos
-        tok_value.type = t.type
-        tok_value.index = self._tok_count
-
-        # handle line and column
-        # must happen after assigning, because we want the start, not the end
-        if t.type in self.newline_tokens_names:
-            self._handle_newlines(t)
-
-
-        if hasattr(t, 'lexer'):
-            t.lexer.lineno = self.lineno    # why not self.lexer ?
-
-        self._tok_count += 1
-
-        t.lineno = self.lineno  # XXX may change from tok_value.line. On purpose??
-        t.value = tok_value
-        return t
+        #else:  # TODO: Was this code important??
+        #    self._lexer_pos_of_start_column = t.lexpos
 
 
 class Grammar(object):
