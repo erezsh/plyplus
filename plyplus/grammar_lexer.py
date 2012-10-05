@@ -29,16 +29,15 @@ t_LPAR = '\('
 t_RPAR = '\)'
 t_COLON = ':'
 t_SEMICOLON = ';'
-t_REGEXP = r"'.*?[^\\]'"
+t_REGEXP = r"'(.|\n)*?[^\\]'"
 t_SECTION = '\#\#\#(.|\\n)*'
 t_LCURLY = '{'
 t_RCURLY = '}'
 
 
 def t_COMMENT(t):
-    r'//[^\n]*\n'
-    t.lexer.lineno += 1
-    pass
+    r'//[^\n]*\n|/[*](.|\n)*?[*]/'
+    t.lexer.lineno += t.value.count('\n')
 
 def t_NL(t):
     r'\n'
