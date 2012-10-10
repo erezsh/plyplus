@@ -98,7 +98,13 @@ def get_token_name(token, default):
         ']' : 'RSQB',
     }.get( token, default)
 
-class GrammarException(Exception): pass
+class PlyplusException(Exception): pass
+
+class GrammarException(PlyplusException): pass
+
+class TokenizeError(PlyplusException): pass
+
+class ParseError(PlyplusException): pass
 
 class GetTokenDefs_Visitor(SVisitor):
     def __init__(self, dict_to_populate):
@@ -424,7 +430,7 @@ class Grammar(object):
 
         grammar_tree = grammar_parser.parse(grammar) #, debug=options.get('debug',False))
         if not grammar_tree:
-            raise GrammarException("Parse Error")
+            raise GrammarException("Parse Error: Could not create grammar")
 
         self._grammar = _Grammar(grammar_tree, source, tab_filename, **options)
 
@@ -502,9 +508,12 @@ class _Grammar(object):
         return toks
 
     def parse(self, text):
+        self.errors = []
         tree = self.parser.parse(text, lexer=self.lexer, debug=self.debug)
         if not tree:
-            raise Exception("Parse error!")
+            self.errors.append("Could not create parse tree!")
+        if self.errors:
+            raise ParseError('\n'.join(self.errors))
 
         # Apply subgrammars
         if self.subgrammars:
@@ -521,7 +530,7 @@ class _Grammar(object):
         if name == '%newline_char':
             self._newline_value = eval(defin)   # XXX BAD BAD! I have TODO it differently
         else:
-            print "Unknown option:", name
+            raise GrammarException( "Unknown option: %s " % name )
 
     @staticmethod
     def _unescape_token_def(token_def):
@@ -609,16 +618,21 @@ class _Grammar(object):
 
     @staticmethod
     def t_error(t):
-        raise Exception("Illegal character in input: '%s', line: %s, %s" % (t.value[:32], t.lineno, t.type))
+        raise TokenizeError("Illegal character in input: '%s', line: %s, %s" % (t.value[:32], t.lineno, t.type))
 
     def p_error(self, p):
         if p:
             if isinstance(p.value, TokValue):
-                print "Syntax error in input at '%s' (type %s)" % (p.value,p.type), 'line',p.value.line, 'col', p.value.column
+                msg = "Syntax error in input at '%s' (type %s) line %s col %s" % (p.value, p.type, p.value.line, p.value.column)
             else:
-                print "Syntax error in input at '%s' (type %s)" % (p.value,p.type), 'line',p.lineno
+                msg = "Syntax error in input at '%s' (type %s) line %s" % (p.value, p.type, p.lineno)
         else:
-            print "Syntax error in input (details unknown)", p
+            msg = "Syntax error in input (details unknown)", p
+
+        if self.debug:
+            print msg
+
+        self.errors.append(msg)
 
     start = "start"
 
