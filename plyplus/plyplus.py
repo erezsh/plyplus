@@ -2,6 +2,7 @@
 
 import re, os
 import types
+import itertools
 
 from ply import lex, yacc
 
@@ -10,14 +11,12 @@ import grammar_parser
 from strees import STree, SVisitor, STransformer, is_stree
 
 # -- Must!
-#TODO: Offer alternatives to PLY facilities: precedence, error, line-count
-#TODO: Allow empty rules
 #TODO: Support States
-#TODO: @ on start symbols should expand them (right now not possible because of technical issues)
+#TODO: @ on start symbols should expand them (right now not possible because of technical design issues)
 #      alternatively (but not as good?): add option to expand all 'start' symbols
 
 # -- Nice to have
-#TODO: Recursive parsing
+#TODO: Operator precedence
 #TODO: find better terms than expand and flatten
 #TODO: Exact recovery of input (as text attr)
 #      Allow to reconstruct the input with whatever changes were made to the tree
@@ -27,18 +26,15 @@ from strees import STree, SVisitor, STransformer, is_stree
 #TODO: Add rule history on parse error?
 
 # -- Unknown status
+#TODO: Allow empty rules
 #TODO: Multiply defined tokens (just concatinate with |?)
 #TODO: Complete EOF handling in python grammar (postlex)
 #TODO: Make filter behaviour consitent for both ()? and ()* / ()+
-#TODO: a (b c d => 1 2) e
 #TODO: better filters
 #TODO: Offer mechanisms to easily avoid ambiguity (expr: expr '\+' expr etc.)
-#TODO: Change rule+ into "rule simp*" instead of "simp+"
 #TODO: Use PLY's ignore mechanism (=tokens return None) instead of post-filtering it myself?
 #TODO: Support Compiling grammars into a single parser python file
-#TODO: Multi-line comments
 #TODO: Support running multi-threaded
-#TODO: Better error handling (choose between prints and raising exception, setting threshold, etc.)
 #TODO: Better debug mode (set debug level, choose between prints and interactive debugging?)
 
 # -- Continual Tasks
@@ -61,6 +57,10 @@ from strees import STree, SVisitor, STransformer, is_stree
 #           --> only works as -->
 #      dictmaker : test COLON test (COMMA test COLON test)+? COMMA? ;
 #DONE: rename simps
+#DONE: Recursive parsing
+#DONE: Change rule+ into "rule simp*" instead of "simp+"
+#DONE: Multi-line comments
+#DONE: Better error handling (choose between prints and raising exception, setting threshold, etc.)
 #
 
 
@@ -152,20 +152,16 @@ class SimplifyGrammar_Visitor(SVisitor):
     ANON_TOKEN_ID = 'ANON'
 
     def __init__(self):
-        self._count = 0
+        self._count = itertools.count()
         self._rules_to_add = []
 
         self.tokendefs = {} # to be populated at visit
 
     def _get_new_rule_name(self):
-        s = '_%s_%d'%(self.ANON_RULE_ID, self._count)
-        self._count += 1
-        return s
+        return '_%s_%d' % (self.ANON_RULE_ID, self._count.next())
 
     def _get_new_tok_name(self, tok):
-        s = '_%s_%d'%(get_token_name(tok[1:-1], self.ANON_TOKEN_ID), self._count)
-        self._count += 1
-        return s
+        return '_%s_%d' % (get_token_name(tok[1:-1], self.ANON_TOKEN_ID), self._count.next())
 
     def _flatten(self, tree):
         to_expand = [i for i, subtree in enumerate(tree.tail) if is_stree(subtree) and subtree.head == tree.head]
@@ -190,7 +186,7 @@ class SimplifyGrammar_Visitor(SVisitor):
         if self._rules_to_add:
             changed = True
             tree.tail += self._rules_to_add
-        self._rules_to_add = []
+            self._rules_to_add = []
         return changed
 
     def _add_recurse_rule(self, mod, name, repeated_expr):
@@ -363,7 +359,6 @@ class LexerWrapper(object):
         self.current_state = lexer.current_state
         self.begin = lexer.begin
 
-
     def input(self, s):
         self.lineno = 1
         self._lexer_pos_of_start_column = -1
@@ -371,7 +366,7 @@ class LexerWrapper(object):
         return self.lexer.input(s)
 
     def token(self):
-        # get a new token that shouldn't be ignored
+        # get a new token that shouldn't be %ignored
         while True:
             self._tok_count += 1
 
@@ -411,26 +406,22 @@ class LexerWrapper(object):
         self.lineno += newlines
 
         if newlines:
-            #newline_text, trailing_text = t.value.rsplit( self.newline_char, 1 )
-            #self._lexer_pos_of_start_column = t.lexpos + len(newline_text)
             self._lexer_pos_of_start_column = t.lexpos + t.value.rindex(self.newline_char)
-        #else:  # TODO: Was this code important??
-        #    self._lexer_pos_of_start_column = t.lexpos
 
 
 class Grammar(object):
     def __init__(self, grammar, **options):
         if isinstance(grammar, file):
             # PLY turns "a.b" into "b", so gotta get rid of the dot.
-            tab_filename = "parsetab_%s"%os.path.split(grammar.name)[1].replace('.', '_')
+            tab_filename = "parsetab_%s" % os.path.split(grammar.name)[1].replace('.', '_')
             source = grammar.name
             grammar = grammar.read()
         else:
             assert isinstance(grammar, str)
-            tab_filename = "parsetab_%s"%str(hash(grammar)%2**32)
+            tab_filename = "parsetab_%s" % str(hash(grammar)%(2L**32))
             source = '<string>'
 
-        grammar_tree = grammar_parser.parse(grammar) #, debug=options.get('debug',False))
+        grammar_tree = grammar_parser.parse(grammar)
         if not grammar_tree:
             raise GrammarException("Parse Error: Could not create grammar")
 
@@ -472,11 +463,10 @@ class _Grammar(object):
 
         # code may be omitted
         if len(ply_grammar_and_code) == 1:
-            ply_grammar_and_code.append('')
-
-        ply_grammar, code = ply_grammar_and_code
-
-        exec(code)
+            ply_grammar, = ply_grammar_and_code
+        else:
+            ply_grammar, code = ply_grammar_and_code
+            exec(code)
 
         for x in ply_grammar:
             type, (name, defin) = x.head, x.tail
@@ -488,7 +478,7 @@ class _Grammar(object):
         lexer = lex.lex(module=self)
         lexer = LexerWrapper(lexer, newline_tokens_names=self._newline_tokens, newline_char=self._newline_value, ignore_token_names=self._ignore_tokens)
         if self.lexer_postproc and not self.ignore_postproc:
-            lexer = self.lexer_postproc(lexer)
+            lexer = self.lexer_postproc(lexer)  # apply wrapper
         self.lexer = lexer
 
         # -- Build Parser --
@@ -499,16 +489,18 @@ class _Grammar(object):
         return '<Grammar from %s, tab at %s>' % (self.source_name, self.tab_filename)
 
     def lex(self, text):
+        "Performs tokenizing as a generator"
         self.lexer.input(text)
-        toks = []
         while True:
             tok = self.lexer.token()
             if not tok:
                 break
-            toks.append(tok)
-        return toks
+            yield tok
 
     def parse(self, text):
+        "Parse the text into an AST"
+        assert not self.just_lex
+
         self.errors = []
         tree = self.parser.parse(text, lexer=self.lexer, debug=self.debug)
         if not tree:
@@ -520,8 +512,10 @@ class _Grammar(object):
         if self.subgrammars:
             ApplySubgrammars_Visitor(self.subgrammars).visit(tree)
 
+        # Apply auto-filtering (remove 'punctuation' tokens)
         if self.auto_filter_tokens:
             tree = FilterTokens_Tranformer().transform(tree)
+
         SimplifySyntaxTree_Visitor(self.rules_to_flatten, self.rules_to_expand).visit(tree)
 
         return tree
