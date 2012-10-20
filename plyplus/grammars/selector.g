@@ -15,7 +15,7 @@ elem_head: HEAD;
 elem_class: CLASS;
 elem_regexp: REGEXP;
 elem_any: '\*';
-selector_list: selector (',' selector)@*;
+selector_list: selector (',' selector)*;
 
 HEAD: '[a-z_][a-z_0-9]*';
 CLASS: '\.[a-z_][a-z_0-9]*';

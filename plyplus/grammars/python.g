@@ -1,4 +1,4 @@
-start: (NEWLINE|stmt)@+;
+start: (NEWLINE|stmt)+;
 //module_header: string NEWLINE;
 
 //
@@ -39,7 +39,7 @@ start: (NEWLINE|stmt)@+;
   assert_stmt : ASSERT test (COMMA test)?;
   del_stmt : DEL exprlist;
 
-  global_stmt : GLOBAL name (COMMA name)@*;
+  global_stmt : GLOBAL name (COMMA name)*;
 
   exec_stmt : EXEC expr (IN test (COMMA test)?)? ;
 
@@ -69,10 +69,10 @@ start: (NEWLINE|stmt)@+;
 
 // compound flow statements
   while_stmt : WHILE test COLON suite else_stmt? ;
-  with_stmt : WITH test (AS expr)? (COMMA test (AS expr)?)@* COLON suite;    // Too permissive
+  with_stmt : WITH test (AS expr)? (COMMA test (AS expr)?)* COLON suite;    // Too permissive
   if_stmt : IF test COLON suite (ELIF test COLON suite)* else_stmt? ;
   for_stmt : FOR exprlist IN testlist COLON suite else_stmt? ;
-  try_stmt : TRY COLON suite (except_stmt@+ else_stmt?  finally_stmt? | finally_stmt );
+  try_stmt : TRY COLON suite (except_stmt+ else_stmt?  finally_stmt? | finally_stmt );
   except_stmt : (EXCEPT (test ((AS|COMMA) test)?)? COLON suite);
   else_stmt : ELSE COLON suite;
   finally_stmt : FINALLY COLON suite;
@@ -106,7 +106,7 @@ start: (NEWLINE|stmt)@+;
 
 // Intentionally more flexible than python syntax
 decorator : AT (attrget|funccall|name) NEWLINE;
-decorators : decorator@+ ;
+decorators : decorator+ ;
 
 //
 //     EXPRESSIONS
@@ -124,7 +124,7 @@ decorators : decorator@+ ;
   ?arith_expr : term (add_symbol term)* ;
 
 
-  arglist : (arg COMMA)@+?
+  arglist : (arg COMMA)+?
           ( arg COMMA?
           | args (COMMA kwargs)?
           | kwargs

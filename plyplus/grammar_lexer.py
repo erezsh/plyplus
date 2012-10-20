@@ -23,7 +23,7 @@ t_RULENAME = '[@#?]?[a-z_][a-z_0-9]*'
 t_TOKEN = '[A-Z_][A-Z_0-9]*'
 t_OPTION = '%[a-z_]+'
 
-t_OPER = '[?]|@?[*+]'
+t_OPER = '[?]|[*+]'
 t_OR = '\|'
 t_LPAR = '\('
 t_RPAR = '\)'

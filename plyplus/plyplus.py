@@ -145,11 +145,9 @@ class SimplifyGrammar_Visitor(SVisitor):
     ANON_RULE_ID = 'anon'
     ANON_TOKEN_ID = 'ANON'
 
-    def __init__(self, expand_all_repeaters=False):
+    def __init__(self):
         self._count = 0
         self._rules_to_add = []
-
-        self.default_rule_mod = '@' if expand_all_repeaters else '#'
 
         self.tokendefs = {} # to be populated at visit
 
@@ -197,7 +195,7 @@ class SimplifyGrammar_Visitor(SVisitor):
     def oper(self, tree):
         rule_operand, operator = tree.tail
 
-        if operator in ('*', '@*'):
+        if operator == '*':
             # a : b c* d;
             #  --> in theory
             # a : b _c d;
@@ -206,17 +204,15 @@ class SimplifyGrammar_Visitor(SVisitor):
             # a : b _c d | b d;
             # _c : _c c | c;
             new_name = self._get_new_rule_name() + '_star'
-            mod = '@' if operator.startswith('@') else self.default_rule_mod
-            self._add_recurse_rule(mod, new_name, rule_operand)
+            self._add_recurse_rule('@', new_name, rule_operand)
             tree.head, tree.tail = 'rules_list', [STree('rule', [new_name]), STree('rule', [])]
-        elif operator in ('+', '@+'):
+        elif operator == '+':
             # a : b c+ d;
             #  -->
             # a : b _c d;
             # _c : _c c | c;
             new_name = self._get_new_rule_name() + '_plus'
-            mod = '@' if operator.startswith('@') else self.default_rule_mod
-            self._add_recurse_rule(mod, new_name, rule_operand)
+            self._add_recurse_rule('@', new_name, rule_operand)
             tree.head, tree.tail = 'rule', [new_name]
         elif operator == '?':
             tree.head, tree.tail = 'rules_list', [rule_operand, STree('rule', [])]
@@ -447,7 +443,6 @@ class _Grammar(object):
         self.just_lex=bool(options.pop('just_lex', False))
         self.ignore_postproc=bool(options.pop('ignore_postproc', False))
         self.auto_filter_tokens=bool(options.pop('auto_filter_tokens', True))
-        self.expand_all_repeaters=bool(options.pop('expand_all_repeaters', False))
         if options:
             raise TypeError("Unknown options: %s"%options.keys())
 
@@ -464,7 +459,7 @@ class _Grammar(object):
         # -- Build Grammar --
         self.subgrammars = {}
         ExtractSubgrammars_Visitor(source_name, tab_filename, self.options).visit(grammar_tree)
-        grammar_tree = SimplifyGrammar_Visitor(expand_all_repeaters=self.expand_all_repeaters).visit(grammar_tree)
+        grammar_tree = SimplifyGrammar_Visitor().visit(grammar_tree)
         ply_grammar_and_code = ToPlyGrammar_Tranformer().transform(grammar_tree)
 
         self.STree = STree

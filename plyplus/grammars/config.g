@@ -1,5 +1,5 @@
-start: (section|NEWLINE)@+;
-section: SECTION NEWLINE (NEWLINE|option)@*;
+start: (section|NEWLINE)+;
+section: SECTION NEWLINE (NEWLINE|option)*;
 option: OPTION NEWLINE;
 
 SECTION: '\[[^\[\]\n;]+]'
