@@ -106,6 +106,12 @@ class TokenizeError(PlyplusException): pass
 
 class ParseError(PlyplusException): pass
 
+class RuleMods(object):
+    EXPAND = '@'    # Expand all instances of rule
+    FLATTEN = '#'   # Expand all nested instances of rule
+    EXPAND1 = '?'   # Expand all instances of rule with only one child
+
+
 class GetTokenDefs_Visitor(SVisitor):
     def __init__(self, dict_to_populate):
         self.tokendefs = dict_to_populate
@@ -204,7 +210,7 @@ class SimplifyGrammar_Visitor(SVisitor):
             # a : b _c d | b d;
             # _c : _c c | c;
             new_name = self._get_new_rule_name() + '_star'
-            self._add_recurse_rule('@', new_name, rule_operand)
+            self._add_recurse_rule(RuleMods.EXPAND, new_name, rule_operand)
             tree.head, tree.tail = 'rules_list', [STree('rule', [new_name]), STree('rule', [])]
         elif operator == '+':
             # a : b c+ d;
@@ -212,7 +218,7 @@ class SimplifyGrammar_Visitor(SVisitor):
             # a : b _c d;
             # _c : _c c | c;
             new_name = self._get_new_rule_name() + '_plus'
-            self._add_recurse_rule('@', new_name, rule_operand)
+            self._add_recurse_rule(RuleMods.EXPAND, new_name, rule_operand)
             tree.head, tree.tail = 'rule', [new_name]
         elif operator == '?':
             tree.head, tree.tail = 'rules_list', [rule_operand, STree('rule', [])]
@@ -595,12 +601,12 @@ class _Grammar(object):
             rule_def = rule_def[len(mods):]
             rule_name = rule_name[len(mods):]
 
-        if '@' in mods:
+        if RuleMods.EXPAND in mods:
             self.rules_to_expand.append( rule_name )
-        elif '#' in mods:
+        elif RuleMods.FLATTEN in mods:
             self.rules_to_flatten.append( rule_name )
 
-        if '?' in mods or '@' in mods:  # @ is here just for the speed-up
+        if RuleMods.EXPAND1 in mods or RuleMods.EXPAND in mods:  # EXPAND is here just for the speed-up
             code = '\tp[0] = self.STree(%r, p[1:]) if len(p)>2 else p[1]' % (rule_name,)
         else:
             code = '\tp[0] = self.STree(%r, p[1:])' % (rule_name,)
