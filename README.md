@@ -1,35 +1,39 @@
-# PlyPlus - a friendly yet powerful LR-parser written in Python.
+# PlyPlus - a friendly yet powerful LR-parser in Python.
 
 Plyplus is a general-purpose parser built on top of [PLY](http://www.dabeaz.com/ply/), written in python, with a slightly different approach to parsing.
 
-Most parsers work by calling a function for each rule they identify, which processes the data and returns to the parser. Plyplus parses the entire file into a parse-tree, letting you search and process it using visitors and pattern-matching.
+## Main Concepts
 
-Plyplus makes two uncommon separations: of code from grammar, and of processing from parsing.  The result of this approach is (hopefully) a cleaner design, more powerful grammar processing, and a parser which is easier to write and to understand.
+1. *Separation of code from grammar*: The result is grammars which are more portable and legible, and the code is cleaner too.
+
+2. *Always build an AST (tree)*: Every application, not matter how small, can benefit from the power and simplicity of working with a tree, instead of a state-machine.
+
+3. *Follow Python's Idioms*: Simplicity and readability are more important than speed, but Plyplus is fast enough!
+
 
 ## Features
 
- - Automatically builds an AST. Customizable in grammar (expand and flatten nodes automatically)
- - Selectors: run powerful queries on the AST
- - Rule operators mimicking regular expressions (supported: parentheses, '|', '\*', '?', and '+')
- - Comes with a full, flexible, Python grammar
+ - EBNF grammar (supported: parentheses, '|', '\*', '?', and '+', inline tokens, and more)
+ - LR-parser
+ - Builds an AST automagically based on the grammar
+ - Selectors: run powerful css-like queries on the AST
  - Nested grammars (a grammar within a grammar. Useful for HTML/CSS, for example)
- - Automatic line counting
- - From PLY: Readable errors, Debug mode
- - And more! ...
+ - Python 2.7 and PyPy 1.9 compatible
+ - Fully-working Python grammar included
 
-## Questions
+## Q & A
 
 Q. How capable is Plyplus?
 
-A. Plyplus is capable of parsing any LR-compatible grammar. It supports post-tokenizing code, so it's capable of parsing python (it comes with a ready-to-use python parser). Other features, such as sub-grammars, provide more options to handle the trickier grammars.
+A. Plyplus is capable of parsing any LR-compatible grammar. It supports post-tokenizing code, so it's capable of parsing python (it comes with a ready-to-use python parser). Other features, such as sub-grammars, provide more flexibility to handle the trickier grammars.
 
 Q. How fast is it?
 
-A. Plyplus does not put speed as its first priority. However, right now it manages to parse the entire Python26/Libs directory (200 files, 4mb of text, including post-processing) in about 42 seconds on my humble dual-core 2ghz 2gb-ram machine.
+A. Plyplus does not put speed as its first priority. However, right now it manages to parse the entire Python26/Libs directory (200 files, 4mb of text, including post-processing) in about 42 seconds on my humble dual-core 2ghz 2gb-ram machine (and 30 seconds with PyPy).
 
 Q. So what is Plyplus' first priority?
 
-A. Ease of use. See the example and judge for yourself.
+A. Power and simplicity. See the examples and judge for yourself.
 
 ## Tutorials
 
@@ -85,7 +89,7 @@ Hard to read? Try looking at it visually! (requires pydot)
 
 INI files are too open-handed to be a good candidate for LR-parsing, but PlyPlus can handle them using nested grammars. By parsing different elements separately, a "]" symbol can be both a special token and just part of the text, all in the same file.
 
-Let's parse an INI file that comes with numpy.
+Let's parse an INI file that comes with NumPy.
 
     >>> g = plyplus.Grammar(plyplus.grammars.open('config.g'))   # load config grammar
     >>> t = g.parse(file(r"C:\Python26\Lib\site-packages\numpy\core\lib\npy-pkg-config\npymath.ini").read())
@@ -100,7 +104,7 @@ Let's look at the meta section
     >>> t.select('=section /meta/')
     [section(start(name('meta')), option(start(name('Name'), start(value('npymath')))), ...
 
-(The start heads denote a subgrammar)
+(The start heads denote a sub-grammar)
 
 Let's pretty-print it! We can use a transformer to do it. A transformer is a tree-visitor that returns a new value for each head (branch) it visits.
 
@@ -130,7 +134,7 @@ It works! Now that it's done, we can use it to output the rest of the file as we
 
 ## License
 
-Plyplus uses the [JQuery license](http://jquery.org/license). Briefly, it's licensed under either MIT of GPL, whichever suits you better.
+Plyplus uses the [MIT license](https://github.com/jquery/jquery/blob/master/MIT-LICENSE.txt).
 
 ## Afterword
 
@@ -138,4 +142,4 @@ I hope this readme inspired you to play with Plyplus a bit, and maybe even use i
 
 For more examples, check out the [test module](/erezsh/plyplus/blob/master/plyplus/test/plyplus_test.py)
 
-If you have any questions or ideas, please email me at erez27+plyplus at gmail com
+If you have any questions or ideas, please email me at erezshin+plyplus at gmail com
