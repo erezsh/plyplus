@@ -289,7 +289,7 @@ string: STRING|LONG_STRING;
 // number taken from tokenize module
 DEC_NUMBER: '[1-9]\d*[lL]?';
 HEX_NUMBER: '0[xX][\da-fA-F]*[lL]?';
-OCT_NUMBER: '0[0-7]*[lL]?';
+OCT_NUMBER: '0o?[0-7]*[lL]?';
 FLOAT_NUMBER: '((\d+\.\d*|\.\d+)([eE][-+]?\d+)?|\d+[eE][-+]?\d+)';
 IMAG_NUMBER: '(\d+[jJ]|((\d+\.\d*|\.\d+)([eE][-+]?\d+)?|\d+[eE][-+]?\d+)[jJ])';
 
