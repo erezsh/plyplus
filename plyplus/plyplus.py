@@ -546,18 +546,26 @@ class _Grammar(object):
                 if mod == '%unless':
                     assert not token_added, "token already added, can't issue %unless"
                     unless_toks_dict = {}
+                    unless_toks_regexps = []
                     for modtoken in modtokenlist.tail:
                         assert modtoken.head == 'token'
                         modtok_name, modtok_value = modtoken.tail
 
                         self._add_token(modtok_name, modtok_value)
 
-                        unless_toks_dict[ self._unescape_token_def(modtok_value) ] = modtok_name
-
+                        value = self._unescape_token_def(modtok_value)
+                        if not re.search('[^\w]', value):   # definitely not a regexp, let's optimize it
+                            unless_toks_dict[value] = modtok_name
+                        else:
+                            unless_toks_regexps += [(value, modtok_name)]
 
                     self.tokens.append(name)
 
                     code = ('\tt.type = self._%s_unless_toks_dict.get(t.value, %r)\n' % (name, name)
+                           +'\tfor regexp, tokname in self._%s_unless_toks_regexps:\n' % (name,)
+                           +'\t\tif re.match(regexp, t.value):\n'
+                           +'\t\t\tt.type = tokname\n'
+                           +'\t\t\tbreak\n'
                            +'\treturn t')
                     s = ('def t_%s(self, t):\n\t%s\n%s\nx = t_%s\n'
                         %(name, re_defin, code, name))
@@ -565,6 +573,7 @@ class _Grammar(object):
 
                     setattr(self, 't_%s'%name, x.__get__(self))
                     setattr(self, '_%s_unless_toks_dict'%name, unless_toks_dict)
+                    setattr(self, '_%s_unless_toks_regexps'%name, unless_toks_regexps)
 
                     token_added = True
 
