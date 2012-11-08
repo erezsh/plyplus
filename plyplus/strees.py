@@ -98,6 +98,20 @@ class STree(object):
 
         return node
 
+    def _pretty(self, indent_str='  '):
+        l = [ indent_str*self.depth, self.head, '\n' ]
+        for n in self.tail:
+            try:
+                l += n._pretty(indent_str)
+            except AttributeError:
+                l += [ indent_str*(self.depth+1), str(n), '\n' ]
+
+        return l
+
+    def pretty(self, **kw):
+        self.calc_depth()
+        return ''.join(self._pretty(**kw))
+
     def to_png_with_pydot(self, filename):
         import pydot
         graph = pydot.Dot(graph_type='digraph', rankdir="LR")
