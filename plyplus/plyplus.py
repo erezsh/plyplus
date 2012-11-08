@@ -631,7 +631,7 @@ class _Grammar(object):
             else:
                 msg = "Syntax error in input at '%s' (type %s) line %s" % (p.value, p.type, p.lineno)
         else:
-            msg = "Syntax error in input (details unknown)", p
+            msg = "Syntax error in input (details unknown): %s" % p
 
         if self.debug:
             print msg
