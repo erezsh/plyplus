@@ -554,10 +554,16 @@ class _Grammar(object):
                         self._add_token(modtok_name, modtok_value)
 
                         value = self._unescape_token_def(modtok_value)
-                        if not re.search('[^\w]', value):   # definitely not a regexp, let's optimize it
+                        if not re.search('[^\w/-]', value):   # definitely not a regexp, let's optimize it
                             unless_toks_dict[value] = modtok_name
                         else:
+                            if not value.startswith('^'):
+                                value = '^' + value
+                            if not value.endswith('$'):
+                                value = value + '$'
                             unless_toks_regexps += [(value, modtok_name)]
+
+                    unless_toks_regexps.sort(key=lambda x:x[0].__len__(), reverse=True)
 
                     self.tokens.append(name)
 
