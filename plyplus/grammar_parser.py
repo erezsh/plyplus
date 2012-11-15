@@ -29,14 +29,22 @@ def p_def(p):
 
 
 def p_tokendef(p):
-    """tokendef : TOKEN COLON REGEXP SEMICOLON
-                | TOKEN COLON REGEXP tokenmods SEMICOLON
-                | TOKEN COLON REGEXP subgrammar SEMICOLON
+    """tokendef : TOKEN COLON tokenvalue SEMICOLON
+                | TOKEN COLON tokenvalue tokenmods SEMICOLON
+                | TOKEN COLON tokenvalue subgrammar SEMICOLON
     """
     if len(p) > 5:
         p[0] = S('tokendef', (p[1], p[3], p[4]))
     else:
         p[0] = S('tokendef', (p[1], p[3]))
+
+def p_tokenvalue(p):
+    """tokenvalue : REGEXP
+                  | TOKEN
+                  | REGEXP tokenvalue
+                  | TOKEN tokenvalue
+    """
+    p[0] = S('tokenvalue', p[1:])
 
 def p_tokenmods(p):
     """tokenmods : tokenmod
@@ -66,8 +74,13 @@ def p_optiondef(p):
     """optiondef : OPTION COLON REGEXP SEMICOLON
                  | OPTION COLON TOKEN SEMICOLON
                  | OPTION COLON RULENAME SEMICOLON
+                 | OPTION TOKEN COLON tokenvalue SEMICOLON
     """
-    p[0] = S('optiondef', (p[1], p[3]))
+    if len(p) == 6:
+        assert p[1] == '%fragment'
+        p[0] = S('fragmentdef', (p[2], p[4]))
+    else:
+        p[0] = S('optiondef', (p[1], p[3]))
 
 def p_rules_list(p):
     """rules_list   : rule

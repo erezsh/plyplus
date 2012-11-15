@@ -13,7 +13,7 @@ Plyplus is a general-purpose parser built on top of [PLY](http://www.dabeaz.com/
 
 ## Features
 
- - EBNF grammar (supported: parentheses, '|', '\*', '?', and '+', inline tokens, and more)
+ - EBNF grammar (supported: parentheses, '|', '\*', '?', and '+', inline tokens, token fragements, and more)
  - LR-parser
  - Builds an AST automagically based on the grammar
  - Selectors: run powerful css-like queries on the AST
