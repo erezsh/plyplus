@@ -201,8 +201,8 @@ vararg : fpdef (EQUAL test)? ;
   yield_expr : YIELD testlist? ;
 
 // There are small silly differences between list comprehensions and generators.
-// Additionally, each of them have its own subtlities.
-// Most of them don't really make sense.
+// Additionally, each of them has its own subtlities,
+// Most of which don't really make sense.
 // >>> [x for x in 1,2,]
 // [1, 2]
 // >>> [x for x in 1,]
@@ -285,20 +285,36 @@ number: DEC_NUMBER | HEX_NUMBER | OCT_NUMBER | FLOAT_NUMBER | IMAG_NUMBER;
 string: STRING|LONG_STRING;
 
 // Tokens!
+%fragment I: '(?i)';    // Case Insensitive
+%fragment S: '(?s)';    // Dot Matches Newline
+
 
 // number taken from tokenize module
-DEC_NUMBER: '[1-9]\d*[lL]?';
-HEX_NUMBER: '0[xX][\da-fA-F]*[lL]?';
-OCT_NUMBER: '0o?[0-7]*[lL]?';
-FLOAT_NUMBER: '((\d+\.\d*|\.\d+)([eE][-+]?\d+)?|\d+[eE][-+]?\d+)';
-IMAG_NUMBER: '(\d+[jJ]|((\d+\.\d*|\.\d+)([eE][-+]?\d+)?|\d+[eE][-+]?\d+)[jJ])';
+%fragment LONG_POSTFIX: I 'l?';
+%fragment EXP_POSTFIX: I 'e[-+]?\d+';
 
-//OPASSIGN: '\+=|-=|\*=|/=|/\/=|%=|\*\*=|&=|\|=|\^=|\<\<=|\>\>=';
+DEC_NUMBER: I '[1-9]\d*'   LONG_POSTFIX;
+HEX_NUMBER: I '0x[\da-f]*' LONG_POSTFIX;
+OCT_NUMBER: I '0o?[0-7]*'  LONG_POSTFIX;
+FLOAT_NUMBER: I '(\d+\.\d*|\.\d+)(' EXP_POSTFIX ')?'
+                '|\d+' EXP_POSTFIX;
+IMAG_NUMBER: I '\d+j|(' FLOAT_NUMBER ')j';
 
-STRING : '(u|b|)r?("(?!"").*?(?<!\\)(\\\\)*?"|\'(?!\'\').*?(?<!\\)(\\\\)*?\')' ;
-LONG_STRING : '(?s)(u|b|)r?(""".*?(?<!\\)(\\\\)*?"""|\'\'\'.*?(?<!\\)(\\\\)*?\'\'\')'
-    (%newline)
-    ;
+%fragment STRING_PREFIX: '(u|b|)r?';
+%fragment STRING_INTERNAL: '.*?(?<!\\)(\\\\)*?' ;
+%fragment QUOTE: '\'';
+%fragment DBLQUOTE: '"';
+%fragment QUOTE3: '\'\'\'';
+%fragment DBLQUOTE3: '"""';
+
+STRING : STRING_PREFIX
+            '(' DBLQUOTE '(?!"")' STRING_INTERNAL DBLQUOTE
+            '|' QUOTE '(?!\'\')' STRING_INTERNAL QUOTE
+            ')' ;
+LONG_STRING : S STRING_PREFIX
+            '(' DBLQUOTE3 STRING_INTERNAL DBLQUOTE3
+            '|' QUOTE3 STRING_INTERNAL QUOTE3
+            ')' (%newline) ;
 
 LEFTSHIFTEQUAL: '\<\<=';
 RIGHTSHIFTEQUAL: '\>\>=';
@@ -357,7 +373,7 @@ WS: '[\t \f]+' (%ignore);
 LINE_CONT: '\\[\t \f]*\r?\n' (%ignore) (%newline);
 COMMENT: '\#[^\n]*'(%ignore);
 
-NAME: '[a-zA-Z_][a-zA-Z_0-9]*(?!r?"|r?\')'  //"// Match names and not strings (r"...")
+NAME: I '[a-z_]\w*(?!r?"|r?\')'  // Match names and not strings (r"...")
     (%unless
         PRINT: 'print';
         IMPORT: 'import';
@@ -404,8 +420,6 @@ NAME: '[a-zA-Z_][a-zA-Z_0-9]*(?!r?"|r?\')'  //"// Match names and not strings (r
 INDENT: '<INDENT>';
 DEDENT: '<DEDENT>';
 EOF: '<EOF>';
-
-%newline_char: '\n';    // default, can be omitted
 
 ###
 from grammars.python_indent_postlex import PythonIndentTracker

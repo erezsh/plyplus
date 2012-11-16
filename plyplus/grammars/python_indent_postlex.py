@@ -54,7 +54,7 @@ class PythonIndentTracker:
             return self.handle_newline(nl_tok)
 
         # -- End of input --
-        if tok is None: 
+        if tok is None:
             #print self.indent_level
             if len(self.indent_level) > 1:
                 while len(self.indent_level) > 1:
@@ -64,7 +64,7 @@ class PythonIndentTracker:
                     new_token.type = DEDENT_type
                     self.token_queue.append(new_token)
                 return self.token() # assume it always returns None
-                
+
             assert self.indent_level == [0], self.indent_level
 
             self.token_queue.append( None )
@@ -88,7 +88,7 @@ class PythonIndentTracker:
             return tok
 
         assert False
- 
+
     def handle_newline(self, tok):  # Do (most) indentation
         text = tok.value
         indent_str = text.rsplit('\n',1)[1] # Tabs and spaces
@@ -97,7 +97,7 @@ class PythonIndentTracker:
         #print tok.start, tok.stop, `tok.text`
         #indent = len(indent_str.replace('\t', self.tab_str))
         indent = indent_str.count(' ') + indent_str.count('\t') * self.tab_len
-        
+
         # -- Indent --
         if indent > self.indent_level[-1]:
             #print "INDENT", indent
@@ -150,8 +150,8 @@ def test():
                 return self.l.pop()
 
     expected_result = [
-            'STMT', 'NL', 
-            'STMT', 'NL', 
+            'STMT', 'NL',
+            'STMT', 'NL',
             'INDENT', 'STMT', 'NL',
             'LBRACK', 'STMT', 'RBRACK', 'NL',
             'DEDENT', 'STMT', 'NL',
@@ -169,7 +169,7 @@ def test():
 
     print ['FAILED!', 'OK!'][toks == expected_result]
 
-        
+
 
 if __name__ == '__main__':
     test()
