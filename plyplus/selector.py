@@ -26,8 +26,11 @@ class _Match(object):
 
     def get_result(self):
         yields = [m for m,s in self.match_track if s.head=='elem' and len(s.tail)>1 and s.tail[0].head=='yield']
-        assert len(yields) <=1, yields
-        return yields[0] if yields else self.match_track[-1][0]
+        #assert len(yields) <=1, yields
+        if len(yields) <= 1:
+            return yields[0] if yields else self.match_track[-1][0]
+        else:
+            return tuple(yields)
 
 
 class STreeSelector(STree):
