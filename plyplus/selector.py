@@ -83,12 +83,12 @@ class STreeSelector(STree):
         try:
             if op == '>':   # travel to parent
                 yield tree.parent()
-            elif op == '~': # travel to previous adjacent sibling
+            elif op == '+': # travel to previous adjacent sibling
                 new_index = tree.index_in_parent - 1
                 if new_index < 0:
                     raise IndexError('We dont want it to overflow back to the last element')
                 yield tree.parent().tail[new_index]
-            elif op == '+': # travel to all previous siblings
+            elif op == '~': # travel to all previous siblings
                 for x in tree.parent().tail[ :tree.index_in_parent ]:
                     yield x
             elif op == ' ': # travel back to root
