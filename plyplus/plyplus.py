@@ -648,7 +648,7 @@ class _Grammar(object):
             self._add_token(name, token_value)
 
     def _add_token(self, name, token_value):
-        assert type(token_value) == str
+        assert isinstance(token_value, str)
         self.tokens.append(name)
         setattr(self, 't_%s'%name, token_value)
 

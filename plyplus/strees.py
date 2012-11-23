@@ -10,17 +10,25 @@ def classify(seq, key=lambda x:x):
 
     return d
 
+class Str(str):
+    pass
+
 class STree(object):
     #__slots__ = 'head', 'tail'
 
     def __init__(self, head, tail):
-        self.head = head
-        self.tail = tail
+        self.reset(head, tail)
 
     def reset(self, head, tail):
         "Warning: calculations done on tree will have to be manually re-run on the tail elements"    # XXX
         self.head = head
+        if type(tail) != list:
+            tail = list(tail)
+        for i, x in enumerate(tail):
+            if type(x) == str:
+                tail[i] = Str(x)
         self.tail = tail
+
 
     def expand_kids(self, *indices):
         for i in sorted(indices, reverse=True): # reverse so that changing tail won't affect indices
@@ -29,6 +37,13 @@ class STree(object):
     def remove_kids(self, *indices):
         for i in sorted(indices, reverse=True): # reverse so that changing tail won't affect indices
             del self.tail[i]
+
+    def remove_leaf_by_id(self, child_id):
+        for i, child in enumerate(self.tail):
+            if id(child) == child_id:
+                del self.tail[i]
+                return
+        raise ValueError("id not found: %s"%child_id)
 
     def __len__(self):
         raise Exception('len')
@@ -99,6 +114,9 @@ class STree(object):
         return node
 
     def _pretty(self, indent_str='  '):
+        if len(self.tail) == 1 and not is_stree(self.tail[0]):
+            return [ indent_str*self.depth, self.head, '\t', self.tail[0], '\n']
+
         l = [ indent_str*self.depth, self.head, '\n' ]
         for n in self.tail:
             try:
