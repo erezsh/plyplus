@@ -128,7 +128,6 @@ def test_python_parse():
         l = g.parse(file('python_sample1.py').read())
         l = g.parse(file('python_sample2.py').read())
         l = g.parse(file('../../examples/calc.py').read())
-        l = g.parse(file('../../examples/calc2.py').read())
         l = g.parse(file('../grammar_lexer.py').read())
         l = g.parse(file('../grammar_parser.py').read())
         l = g.parse(file('../strees.py').read())
