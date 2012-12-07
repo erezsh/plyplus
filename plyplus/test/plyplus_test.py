@@ -10,7 +10,10 @@ logging.basicConfig(level=logging.INFO)
 
 if os.name == 'nt':
     PYTHON25_LIB = r'C:\Python25\Lib\\'
-    PYTHON_LIB = os.path.join(sys.prefix, 'Lib')
+    if 'PyPy' in sys.version:
+        PYTHON_LIB = os.path.join(sys.prefix, 'lib-python', sys.winver)
+    else:
+        PYTHON_LIB = os.path.join(sys.prefix, 'Lib')
 else:
     PYTHON25_LIB = None
     PYTHON_LIB = '/usr/lib64/python2.7/'
