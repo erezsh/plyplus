@@ -43,6 +43,13 @@ class STree(object):
             del self.tail[i]
         self.clear_cache()
 
+    def remove_leaf_by_head(self, head):
+        for i, child in enumerate(self.tail):
+            if child.head == head:
+                del self.tail[i]
+                self.clear_cache()
+                return
+        raise ValueError("head not found: %s"%head)
     def remove_leaf_by_id(self, child_id):
         for i, child in enumerate(self.tail):
             if id(child) == child_id:
