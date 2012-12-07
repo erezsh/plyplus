@@ -28,13 +28,13 @@ Let's see the result of parsing with the grammar.
 
 The result is a STree instance, with a 'head' attribute of 'start' and a 'tail' attribute which is a list of nested STree instances.
 
-It's simple to understand, but what is \_anon\_1\_star? It's the name of the implicit rule we created with the asterisk in 'start'. We can tell plyplus to expand it (i.e. move its matches to its parent) by using the @\* operator.
+It's simple to understand, but what is \_anon\_1\_star? It's the name of the implicit rule we created with the asterisk in 'start'. We can tell plyplus to expand it (i.e. move its matches to its parent) by using the \* operator.
 
 ( Note: It's possible to get the commas as well ("punctuation tokens"), by instanciating Grammar with auto\_filter\_tokens=False )
 
 Let's apply change the operator and see the result:
 
-    >>> list_parser = Grammar(r"start: name (',' name)@* ; name: '\w+' ;")
+    >>> list_parser = Grammar(r"start: name (',' name)* ; name: '\w+' ;")
     >>> list_parser.parse('cat,milk,dog')
     start(name('cat'), name('milk'), name('dog'))
 
@@ -47,7 +47,7 @@ Well, that seems like a lot of overhead just to split a list, doesn't it? But th
 
     >>> list_parser = Grammar("""
             start: list ;                           // We only match a list
-            @list : '\[' item (',' item)@* '\]' ;   // Define a list
+            @list : '\[' item (',' item)* '\]' ;   // Define a list
             @item : number | list ;                 // Define an item, provide nesting
             number: '\d+' ;
             SPACES: '[ ]+' (%ignore) ;              // Ignore spaces

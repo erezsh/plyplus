@@ -21,8 +21,8 @@ And here are the operators:
 
   - _a b_ - matches if a is a descendant of b (okay, it's the empty operator. Still counts)
   - _a > b_ - matches if b is a child of a
-  - _a + b_ - matches a and b are siblings (have the same parent), and b comes after a.
-  - _a ~ b_ - matches a and b are siblings, and b comes _immmediately_ after a.
+  - _a ~ b_ - matches a and b are siblings (have the same parent), and b comes after a.
+  - _a + b_ - matches a and b are siblings, and b comes _immmediately_ after a.
   
 Elements can also have modifiers (more to come!):
 
@@ -67,7 +67,7 @@ Wait! Why did we get "basestring" twice? And why is "isinstance" there? It's not
     
 How about all of the keyword arguments used? (notice they are pairs of names inside an "arg" head)
 
-    >>> x.select('arg =name + *')
+    >>> x.select('arg =name ~ *')
     [name('isinstance'), name('shell'), name('bufsize'), name('stdin'), name('stdout'), name('close_fds')]
 
 ## Afterword
