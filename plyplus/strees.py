@@ -28,20 +28,26 @@ class STree(object):
             if type(x) == str:
                 tail[i] = Str(x)
         self.tail = tail
+        self.clear_cache()
 
+    def clear_cache(self):
+        self._named_tail = None
 
     def expand_kids(self, *indices):
         for i in sorted(indices, reverse=True): # reverse so that changing tail won't affect indices
             kid = self.tail[i]
             self.tail[i:i+1] = kid.tail
+        self.clear_cache()
     def remove_kids(self, *indices):
         for i in sorted(indices, reverse=True): # reverse so that changing tail won't affect indices
             del self.tail[i]
+        self.clear_cache()
 
     def remove_leaf_by_id(self, child_id):
         for i, child in enumerate(self.tail):
             if id(child) == child_id:
                 del self.tail[i]
+                self.clear_cache()
                 return
         raise ValueError("id not found: %s"%child_id)
 
@@ -60,7 +66,7 @@ class STree(object):
     @property
     def named_tail(self):
         "Warning: Assumes 'tail' doesn't change"
-        if not hasattr(self, '_named_tail'):
+        if not hasattr(self, '_named_tail') or self._named_tail is None:
             self._named_tail = classify(self.tail, lambda e: e.head)
         return self._named_tail
     def leaf(self, leaf_head, default=KeyError):
