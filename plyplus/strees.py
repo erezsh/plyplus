@@ -157,12 +157,6 @@ class STree(object):
             except AttributeError:
                 pass
 
-    def select(self, s):
-        from selector import selector   # import loop, don't use internally
-        return selector(s).match(self)
-    def select1(self, s):
-        [r] = self.select(s)
-        return r
 
 def is_stree(obj):
     return type(obj) is STree or isinstance(obj, STree)

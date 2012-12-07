@@ -155,3 +155,12 @@ def selector(s):
         selector_dict[s] = selector_grammar.parse(s)
     return selector_dict[s]
 
+def install():
+    def select(self, s):
+        return selector(s).match(self)
+    def select1(self, s):
+        [r] = self.select(s)
+        return r
+
+    STree.select = select
+    STree.select1 = select1
