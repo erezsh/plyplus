@@ -8,7 +8,7 @@ from pprint import pprint
 
 logging.basicConfig(level=logging.INFO)
 
-tree_grammar = Grammar("start: branch; branch: name ('{' branch@* '}')?; name: '[a-z]';")
+tree_grammar = Grammar("start: branch; branch: name ('{' branch* '}')?; name: '[a-z]';")
 
 tree1 = tree_grammar.parse('a{b{cde}}')
 tree2 = tree_grammar.parse('a{abc{bbab}c}')
@@ -49,11 +49,11 @@ def test_operators():
     assert len( selector('branch branch branch name').match(tree1) ) == 3
     assert len( selector('branch branch branch').match(tree1) ) == 3
 
-    assert len( selector('branch~branch').match(tree1) ) == 2
-    assert len( selector('branch+branch+branch').match(tree1) ) == 1
-    assert len( selector('branch+branch+branch+branch').match(tree1) ) == 0
+    assert len( selector('branch+branch').match(tree1) ) == 2
+    assert len( selector('branch~branch~branch').match(tree1) ) == 1
+    assert len( selector('branch~branch~branch~branch').match(tree1) ) == 0
 
-    assert len( selector('branch:is-parent ~ branch branch > name > /a/:is-leaf').match(tree2) ) == 1   # test all at once; only innermost 'a' matches
+    assert len( selector('branch:is-parent + branch branch > name > /a/:is-leaf').match(tree2) ) == 1   # test all at once; only innermost 'a' matches
 
 def test_lists():
     assert set( selector('(/a/)').match(tree1) ) == set('a')
@@ -76,5 +76,3 @@ def test_all():
     print "All done!"
 
 test_all()
-#for x in selector('branch /b$/').match(tree1):
-#    print '@', x.match_track
