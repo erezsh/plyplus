@@ -6,7 +6,7 @@ from plyplus import Grammar
 import grammars
 
 def sum_list(l):
-    return list(chain(*l))
+    return chain(*l)  # Fastest way according to my tests
 
 class _Match(object):
     def __init__(self, matched, selector):
@@ -140,16 +140,18 @@ class STreeSelector(STree):
         return self.tail[0]._match(other)
 
     def _match(self, other):
-        if hasattr(self, 'match__%s' % self.head):
-            return getattr(self, 'match__%s' % self.head)(other)
-        return []
+        return getattr(self, 'match__' + self.head)(other)
 
     def match(self, other):
         other.calc_parents()    # TODO add caching?
         return [x.get_result() for x in self._match(other)]
 
 
+selector_dict = {}
 
 selector_grammar = Grammar(grammars.open('selector.g'))
 def selector(s):
-    return selector_grammar.parse(s)
+    if s not in selector_dict:
+        selector_dict[s] = selector_grammar.parse(s)
+    return selector_dict[s]
+

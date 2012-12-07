@@ -82,14 +82,13 @@ class STree(object):
         for kid in self.tail:
             l += kid.find_predicate(predicate)
         return l
+
     def map(self, func, context=None):
         if context is None:
             context = [ func(self) ]
         for kid in self.tail:
-            try:
+            if hasattr(kid, 'map'):
                 kid.map(func, context)
-            except AttributeError:
-                pass
             context.append( func(kid) )
         return context
 
