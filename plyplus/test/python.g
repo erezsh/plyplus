@@ -1,6 +1,6 @@
 
 start: module_header? stmts;
-@stmts: stmt@*; // A bit permissive, but will help with errornous code */
+@stmts: stmt*; // A bit permissive, but will help with errornous code */
 @stmt: simple_stmt_list | block_stmt | empty_stmt ;
 @simple_stmt_list: simple_stmt_list2 NL;
 @simple_stmt_list2: simple_stmt ';'? | simple_stmt ';' simple_stmt_list2;
@@ -13,10 +13,10 @@ empty_stmt: NL | INDENT NL? DEDENT; // should handle in lexer level?
 module_header: string NL;
 
 // this import is a bit more permissive than the official one
-import  : IMPORT (module_name (AS NAME)? ) (',' module_name (AS NAME)? )@*  // import is wierd!
+import  : IMPORT (module_name (AS NAME)? ) (',' module_name (AS NAME)? )*  // import is wierd!
         | FROM relative_module_name IMPORT (import_as_names|LPAREN import_as_names RPAREN|'\*')
         ;
-module_name : NAME (DOT NAME)@*;
+module_name : NAME (DOT NAME)*;
 relative_module_name : module_name | (DOT DOT* module_name?) ;
 
 import_as_names :  import_as_name ','? | import_as_name ',' import_as_names;
@@ -207,10 +207,10 @@ value: number
 number: DEC_NUMBER | HEX_NUMBER | OCT_NUMBER | FLOAT_NUMBER | IMAG_NUMBER;
 list : LBRACK (list_inner|comprehension)? RBRACK ;
 tuple: LPAREN (list_inner|comprehension)? RPAREN ;
-list_inner	: expr | expr COMMA (expr (COMMA)? )@* ;
+list_inner	: expr | expr COMMA (expr (COMMA)? )* ;
 set  : LCURLY list_inner RCURLY ;
 dict : LCURLY dict_inner RCURLY ;
-dict_inner  : (expr ':' expr (COMMA)? )@* ;
+dict_inner  : (expr ':' expr (COMMA)? )* ;
 repr_expr: '`' expr_list '`';
 
 
@@ -336,17 +336,11 @@ MINUS: '-';
 INDENT: '<INDENT>';
 DEDENT: '<DEDENT>';
 
-//%ignore: '\t \f'; // No tokens start with space or tab
-
 %newline_char: '\n';
 
-COMMENT: '\#[^\n]*';
+COMMENT: '\#[^\n]*' (%ignore);
 
 ###
-from python_indent_postlex import PythonIndentTracker 
+from grammars.python_indent_postlex import PythonIndentTracker 
 self.lexer_postproc = PythonIndentTracker
 
-#def t_COMMENT(t):   #/* Can I move it back to normal tokens? */
-#    '\#[^\n]*';
-#    pass
-#self.t_COMMENT = t_COMMENT
