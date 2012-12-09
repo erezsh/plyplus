@@ -9,13 +9,11 @@ logging.basicConfig(level=logging.INFO)
 # TODO add tests for python versions other than 2.5
 
 if os.name == 'nt':
-    PYTHON25_LIB = r'C:\Python25\Lib\\'
     if 'PyPy' in sys.version:
         PYTHON_LIB = os.path.join(sys.prefix, 'lib-python', sys.winver)
     else:
         PYTHON_LIB = os.path.join(sys.prefix, 'Lib')
 else:
-    PYTHON25_LIB = None
     PYTHON_LIB = '/usr/lib64/python2.7/'
 
 FIB = """
@@ -60,9 +58,9 @@ def test2():
     for x in g.parse('aaabaab'):
         if isinstance(x, TokValue):
             tok = x
-            print 'tok #%d: %s = %s {%d:%d}' % (tok.index, tok.type, tok, tok.line, tok.column)
+            print('tok #%d: %s = %s {%d:%d}' % (tok.index, tok.type, tok, tok.line, tok.column))
         else:
-            print type(x), x
+            print(type(x), x)
 
 
 def test3():
@@ -143,10 +141,6 @@ def test_python_parse():
         end = time.time()
         logging.info("Time: %s secs " % (end-start))
 
-    if PYTHON25_LIB:
-        l = g.parse(file(PYTHON25_LIB + 'os.py').read())
-        l = g.parse(file(PYTHON25_LIB + 'pydoc.py').read())
-
 def test_python_parse2(n):
     g = Grammar(file(python_g_file))
     if n == 0:
@@ -216,7 +210,7 @@ def test_auto_filtered_python():
     r = g.parse(file('../plyplus.py').read())
     #pprint()
     from sexp import find
-    print [x.tail[0] for x in find(r, 'decorator')]
+    print([x.tail[0] for x in find(r, 'decorator')])
 
 def test_python_lib_with_filters(path = PYTHON_LIB):
     import glob, os
@@ -226,7 +220,7 @@ def test_python_lib_with_filters(path = PYTHON_LIB):
     start = time.time()
     for f in files:
         f2 = os.path.join(path,f)
-        print f2
+        print(f2)
         l = g.parse(file(f2).read())
 
     end = time.time()
@@ -242,7 +236,7 @@ def test_config_parser():
         [Section2]
         whatever: whatever
         """)
-    print res
+    print(res)
 
 if __name__ == '__main__':
     #test_python_lib()

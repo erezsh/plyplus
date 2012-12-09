@@ -114,9 +114,9 @@ def p_oper(p):
 
 def p_error(p):
     if p:
-        print "PLYPLUS: Syntax error in grammar at '%s'" % p.value, 'line',p.lineno, 'type',p.type
+        print("PLYPLUS: Syntax error in grammar at '%s'" % p.value, 'line',p.lineno, 'type',p.type)
     else:
-        print "PLYPLUS: Unknown syntax error in grammar"
+        print("PLYPLUS: Unknown syntax error in grammar")
 
 start = "extgrammar"
 

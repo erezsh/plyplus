@@ -163,11 +163,11 @@ def test():
     toks = []
     tok = a.token()
     while tok:
-        print tok.type
+        print(tok.type)
         toks.append(tok.type)
         tok = a.token()
 
-    print ['FAILED!', 'OK!'][toks == expected_result]
+    print(['FAILED!', 'OK!'][toks == expected_result])
 
 
 
