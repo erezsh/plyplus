@@ -15,11 +15,15 @@ def sum_list(l):
 class _Match(object):
     __slots__ = 'match_track'
 
-    def __init__(self, matched, selector_instance):
-        self.match_track = [(matched, selector_instance)]
+    def __init__(self, match_track):
+        self.match_track = match_track
+
+    @classmethod
+    def create(cls, matched, selector_instance):
+        return cls( ((matched, selector_instance),) )
 
     def __hash__(self):
-        return hash(tuple(self.match_track))
+        return hash(self.match_track)
     def __eq__(self, other):
         return self.match_track == other.match_track
 
@@ -27,8 +31,8 @@ class _Match(object):
     def last_elem_matched(self):
         return self.match_track[0][0]
 
-    def extend(self, other):
-        self.match_track += other.match_track
+    def extended(self, other):
+        return type(self)(self.match_track + other.match_track)
 
     def get_result(self):
         yields = [m for m, s in self.match_track
@@ -47,8 +51,9 @@ class _Match(object):
 
 
 class STreeSelector(STree):
-    def _post_init(self):
+    _set_head = None   # Make sure it doesn't change
 
+    def _post_init(self):
         if self.head == 'modifier':
             assert self.tail[0].head == 'modifier_name' and len(self.tail[0].tail) == 1
             modifier_name = self.tail[0].tail[0]
@@ -109,12 +114,11 @@ class STreeSelector(STree):
     def match__elem_with_modifier(self, other):
         matches = self.tail[-1].match__modifier(other)   # skip possible yield
         matches = filter(self.tail[-2]._match, matches)
-        return [_Match(m, self) for m in matches]
+        return [_Match.create(m, self) for m in matches]
 
     def match__elem_without_modifier(self, other):
         matches = self.tail[-1]._match(other)   # skip possible yield
-        return [_Match(m, self) for m in matches]
-
+        return [_Match.create(m, self) for m in matches]
 
     def match__selector_list(self, other):
         assert self.head == 'result_list', 'call to _init_selector_list failed!'
@@ -162,26 +166,30 @@ class STreeSelector(STree):
         _selector = self.tail[0]
         op = self.tail[1].tail[0] if len(self.tail) > 1 else ' '
 
-
         matches_found = []
         for match in matches_so_far:
             to_check = list(self._travel_tree_by_op(match.last_elem_matched, op))
 
             if to_check:
                 for match_found in _selector.match__selector(to_check):
-                    match_found.extend( match )
+                    match_found = match_found.extended( match )
                     matches_found.append( match_found )
 
         return matches_found
 
     def match__selector(self, other):
         elem = self.tail[-1]
+        elem.clear_cache()  # XXX What's going on? Where is the cache invalidated?
         if is_stree(other):
-            res = sum_list(other.map(elem._match))
+            _id = 'match__selector', elem, other
+            _cache = other._cache
+            if _id in _cache:
+                res = _cache[_id]
+            else:
+                res = list(sum_list(other.map(elem._match)))
+                _cache[_id] = res
         else:
             res = sum_list([elem._match(item) for item in other]) # we were called by a selector_op
-        if not res:
-            return []   # shortcut
 
         if self.tail[0].head == 'selector_op':
             res = self.tail[0]._match_selector_op(res)
@@ -191,9 +199,6 @@ class STreeSelector(STree):
     def match__start(self, other):
         assert len(self.tail) == 1
         return self.tail[0]._match(other)
-
-    # def _match(self, other):
-    #     return getattr(self, 'match__' + self.head)(other)
 
     def match(self, other, **kwargs):
         other.calc_parents()    # TODO add caching?
@@ -246,4 +251,3 @@ def install():
 
     STreeCollection.select = collection_select
     STreeCollection.select1 = select1
-

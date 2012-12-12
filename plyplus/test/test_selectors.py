@@ -104,7 +104,7 @@ class TestSelectors(unittest.TestCase):
             name_ast.select('{name}')
 
         # Make sure it plays nicely with values and arguments that don't exist
-        assert not name_ast.select('{name}', name='A', another='B')
+        self.assertFalse( name_ast.select('{name}', name='A', another='B') )
 
         # Test select1, and more "advanced" features with a param
         assert tree1.select1('=branch =(={name})', name=name_ast) == (tree1.tail[0], name_ast)

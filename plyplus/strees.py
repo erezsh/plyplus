@@ -19,51 +19,71 @@ class STree(object):
 
     def __init__(self, head, tail, skip_adjustments=False):
         if skip_adjustments:
-            self.head, self.tail = head, tail
+            self._head, self._tail = head, tail
             self.clear_cache()
         else:
             self.reset(head, tail)
 
-    def reset(self, head, tail):
-        "Warning: calculations done on tree will have to be manually re-run on the tail elements"    # XXX
-        self.head = head
+    def _get_head(self):
+        return self._head
+    def _set_head(self, head):
+        self._head = head
+        self.clear_cache()
+    head = property(_get_head, _set_head)
+
+    def _get_tail(self):
+        return self._tail
+    def _set_tail(self, tail):
+        self._tail = tail
         if type(tail) != list:
             tail = list(tail)
         for i, x in enumerate(tail):
             if type(x) in StringTypes:
                 tail[i] = Str(x)
-        self.tail = tail
         self.clear_cache()
+    tail = property(_get_tail, _set_tail)
+
+    def reset(self, head, tail):
+        "Warning: calculations done on tree will have to be manually re-run on the tail elements"    # XXX
+        self._head = head
+        self.tail = tail    # clears the cache
 
     def reset_from_tree(self, tree):
-        self.reset(tree.head, tree.tail)
+        # self.reset(tree._head, tree._tail)
+        self._head = tree._head
+        self._tail = tree._tail
+        self._cache = tree._cache
+        if hasattr(self, 'parent') and self.parent:
+            self.parent().clear_cache()
 
     def clear_cache(self):
         self._cache = {}
+        if hasattr(self, 'parent') and self.parent:
+            self.parent().clear_cache()
 
     def expand_kids_by_index(self, *indices):
         for i in sorted(indices, reverse=True): # reverse so that changing tail won't affect indices
-            kid = self.tail[i]
-            self.tail[i:i+1] = kid.tail
+            kid = self._tail[i]
+            self._tail[i:i+1] = kid._tail
         self.clear_cache()
 
     def remove_kids_by_index(self, *indices):
         for i in sorted(indices, reverse=True): # reverse so that changing tail won't affect indices
-            del self.tail[i]
+            del self._tail[i]
         self.clear_cache()
 
     def remove_kid_by_head(self, head):
-        for i, child in enumerate(self.tail):
-            if child.head == head:
-                del self.tail[i]
+        for i, child in enumerate(self._tail):
+            if child._head == head:
+                del self._tail[i]
                 self.clear_cache()
                 return
         raise ValueError("head not found: %s"%head)
 
     def remove_kid_by_id(self, child_id):
-        for i, child in enumerate(self.tail):
+        for i, child in enumerate(self._tail):
             if id(child) == child_id:
-                del self.tail[i]
+                del self._tail[i]
                 self.clear_cache()
                 return
         raise ValueError("id not found: %s"%child_id)
@@ -82,11 +102,13 @@ class STree(object):
         return True    # XXX ???
     def __bool__(self):
         return True    # XXX ???
+
+    @_cache_0args
     def __hash__(self):
-        return hash((self.head, tuple(self.tail)))
+        return hash((self._head, tuple(self._tail)))
     def __eq__(self, other):
         try:
-            return self.head == other.head and self.tail == other.tail
+            return self._head == other._head and self._tail == other._tail
         except AttributeError:
             return False
     def __ne__(self, other):
@@ -105,7 +127,8 @@ class STree(object):
     @_cache_0args
     def named_tail(self):
         "Warning: Assumes 'tail' doesn't change"
-        return classify(self.tail, lambda e: is_stree(e) and e.head)
+        return classify(self._tail, lambda e: is_stree(e) and e._head)
+
     def leaf(self, leaf_head, default=KeyError):
         try:
             [r] = self.named_tail[leaf_head]
@@ -149,7 +172,7 @@ class STree(object):
     def map(self, func, context=None):
         if context is None:
             context = [ func(self) ]
-        for kid in self.tail:
+        for kid in self._tail:
             if hasattr(kid, 'map'):
                 kid.map(func, context)
             context.append( func(kid) )
@@ -207,7 +230,7 @@ class STree(object):
 
     def _to_pydot(self, graph):
         import pydot
-        color = hash(self.head) & 0xffffff
+        color = hash(self._head) & 0xffffff
         if not (color & 0x808080):
             color |= 0x808080
 
@@ -216,8 +239,8 @@ class STree(object):
             graph.add_node(node)
             return node
 
-        subnodes = [kid._to_pydot(graph) if is_stree(kid) else new_leaf(kid) for kid in self.tail]
-        node = pydot.Node(id(self), style="filled", fillcolor="#%x"%color, label=self.head)
+        subnodes = [kid._to_pydot(graph) if is_stree(kid) else new_leaf(kid) for kid in self._tail]
+        node = pydot.Node(id(self), style="filled", fillcolor="#%x"%color, label=self._head)
         graph.add_node(node)
 
         for subnode in subnodes:
@@ -226,11 +249,11 @@ class STree(object):
         return node
 
     def _pretty(self, indent_str='  '):
-        if len(self.tail) == 1 and not is_stree(self.tail[0]):
-            return [ indent_str*self.depth, self.head, '\t', self.tail[0], '\n']
+        if len(self._tail) == 1 and not is_stree(self._tail[0]):
+            return [ indent_str*self.depth, self._head, '\t', self._tail[0], '\n']
 
-        l = [ indent_str*self.depth, self.head, '\n' ]
-        for n in self.tail:
+        l = [ indent_str*self.depth, self._head, '\n' ]
+        for n in self._tail:
             try:
                 l += n._pretty(indent_str)
             except AttributeError:
@@ -281,15 +304,15 @@ class SVisitor_Recurse(object):
         return tree
 
     def _visit(self, tree):
-        pre_f = getattr(self, 'pre_' + tree.head, None)
+        pre_f = getattr(self, 'pre_' + tree._head, None)
         if pre_f:
             pre_f(tree)
 
-        for branch in tree.tail:
+        for branch in tree._tail:
             if is_stree(branch):
                 self._visit(branch)
 
-        f = getattr(self, tree.head, self.__default__)
+        f = getattr(self, tree._head, self.__default__)
         return f(tree)
 
     def __default__(self, tree):
@@ -306,10 +329,10 @@ class STransformer(object):
 
         branches = [
                 self._transform(branch) if is_stree(branch) else branch
-                for branch in tree.tail
+                for branch in tree._tail
             ]
 
-        new_tree = tree.__class__(tree.head, branches)
+        new_tree = tree.__class__(tree._head, branches)
         if hasattr(tree, 'depth'):
             new_tree.depth = tree.depth # XXX ugly hack, need a general solution for meta-data (meta attribute?)
         if hasattr(tree, 'parent'):
@@ -317,7 +340,7 @@ class STransformer(object):
             new_tree.parent = tree.parent
             new_tree.index_in_parent = tree.index_in_parent
 
-        f = getattr(self, new_tree.head, self.__default__)
+        f = getattr(self, new_tree._head, self.__default__)
         return f(new_tree)
 
     def __default__(self, tree):
