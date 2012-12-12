@@ -1,3 +1,4 @@
+import functools
 from weakref import ref
 
 def classify(seq, key=lambda x:x):
@@ -9,6 +10,16 @@ def classify(seq, key=lambda x:x):
         d[k].append( item )
 
     return d
+
+def _cache_0args(obj):
+    @functools.wraps(obj)
+    def memoizer(self):
+        _cache = self._cache
+        _id = id(obj)
+        if _id not in _cache:
+            self._cache[_id] = obj(self)
+        return _cache[_id]
+    return memoizer
 
 class Str(str):
     pass
@@ -31,13 +42,14 @@ class STree(object):
         self.clear_cache()
 
     def clear_cache(self):
-        self._named_tail = None
+        self._cache = {}
 
     def expand_kids(self, *indices):
         for i in sorted(indices, reverse=True): # reverse so that changing tail won't affect indices
             kid = self.tail[i]
             self.tail[i:i+1] = kid.tail
         self.clear_cache()
+
     def remove_kids(self, *indices):
         for i in sorted(indices, reverse=True): # reverse so that changing tail won't affect indices
             del self.tail[i]
@@ -50,6 +62,7 @@ class STree(object):
                 self.clear_cache()
                 return
         raise ValueError("head not found: %s"%head)
+
     def remove_leaf_by_id(self, child_id):
         for i, child in enumerate(self.tail):
             if id(child) == child_id:
@@ -71,11 +84,10 @@ class STree(object):
             return False
 
     @property
+    @_cache_0args
     def named_tail(self):
         "Warning: Assumes 'tail' doesn't change"
-        if not hasattr(self, '_named_tail') or self._named_tail is None:
-            self._named_tail = classify(self.tail, lambda e: e.head)
-        return self._named_tail
+        return classify(self.tail, lambda e: e.head)
     def leaf(self, leaf_head, default=KeyError):
         try:
             [r] = self.named_tail[leaf_head]
@@ -162,6 +174,7 @@ class STree(object):
                 kid.index_in_parent = i
             except AttributeError:
                 pass
+
     def calc_depth(self, depth=0):
         self.depth = depth
         for kid in self.tail:
