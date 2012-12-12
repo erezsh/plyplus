@@ -1,5 +1,6 @@
 import functools
 from weakref import ref
+from copy import deepcopy
 
 def classify(seq, key=lambda x:x):
     d = {}
@@ -25,7 +26,7 @@ class Str(str):
     pass
 
 class STree(object):
-    #__slots__ = 'head', 'tail'
+    # __slots__ = 'head', 'tail', '_cache', 'parent', 'index_in_parent'
 
     def __init__(self, head, tail):
         self.reset(head, tail)
@@ -41,21 +42,24 @@ class STree(object):
         self.tail = tail
         self.clear_cache()
 
+    def reset_from_tree(self, tree):
+        self.reset(tree.head, tree.tail)
+
     def clear_cache(self):
         self._cache = {}
 
-    def expand_kids(self, *indices):
+    def expand_kids_by_index(self, *indices):
         for i in sorted(indices, reverse=True): # reverse so that changing tail won't affect indices
             kid = self.tail[i]
             self.tail[i:i+1] = kid.tail
         self.clear_cache()
 
-    def remove_kids(self, *indices):
+    def remove_kids_by_index(self, *indices):
         for i in sorted(indices, reverse=True): # reverse so that changing tail won't affect indices
             del self.tail[i]
         self.clear_cache()
 
-    def remove_leaf_by_head(self, head):
+    def remove_kid_by_head(self, head):
         for i, child in enumerate(self.tail):
             if child.head == head:
                 del self.tail[i]
@@ -63,7 +67,7 @@ class STree(object):
                 return
         raise ValueError("head not found: %s"%head)
 
-    def remove_leaf_by_id(self, child_id):
+    def remove_kid_by_id(self, child_id):
         for i, child in enumerate(self.tail):
             if id(child) == child_id:
                 del self.tail[i]
@@ -84,6 +88,9 @@ class STree(object):
             return self.head == other.head and self.tail == other.tail
         except AttributeError:
             return False
+
+    def __deepcopy__(self, memo):
+        return type(self)(self.head, deepcopy(self.tail, memo))
 
     @property
     @_cache_0args
@@ -163,19 +170,15 @@ class STree(object):
         graph.write_png(filename)
 
     def calc_parents(self):
+        for i, kid in enumerate(self.tail):
+            if is_stree(kid):
+                kid.calc_parents()
+            kid.parent = ref(self)
+            kid.index_in_parent = i
+
         if not hasattr(self, 'parent'):
             self.parent = None
             self.index_in_parent = None
-        for i, kid in enumerate(self.tail):
-            try:
-                kid.calc_parents()
-            except AttributeError:
-                pass
-            try:
-                kid.parent = ref(self)
-                kid.index_in_parent = i
-            except AttributeError:
-                pass
 
     def calc_depth(self, depth=0):
         self.depth = depth

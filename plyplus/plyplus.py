@@ -228,7 +228,7 @@ class SimplifyGrammar_Visitor(SVisitor):
     def _flatten(self, tree):
         to_expand = [i for i, subtree in enumerate(tree.tail) if is_stree(subtree) and subtree.head == tree.head]
         if to_expand:
-            tree.expand_kids(*to_expand)
+            tree.expand_kids_by_index(*to_expand)
         return bool(to_expand)
 
     def _visit(self, tree):
@@ -373,12 +373,12 @@ class SimplifySyntaxTree_Visitor(SVisitor):
                         or (subtree.head in self.rules_to_expand)
                     ) ]
         if to_expand:
-            tree.expand_kids(*to_expand)
+            tree.expand_kids_by_index(*to_expand)
 
         # Remove empty trees ( XXX not strictly necessary, just cleaner... should I keep them?)
         to_remove = [i for i, subtree in enumerate(tree.tail) if is_stree(subtree) and not subtree.tail]
         if to_remove:
-            tree.remove_kids(*to_remove)
+            tree.remove_kids_by_index(*to_remove)
 
 class FilterTokens_Tranformer(STransformer):
     def __default__(self, tree):
