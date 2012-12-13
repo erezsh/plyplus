@@ -25,15 +25,29 @@ class _Match(object):
         self.match_track += other.match_track
 
     def get_result(self):
-        yields = [m for m,s in self.match_track if s.head=='elem' and len(s.tail)>1 and s.tail[0].head=='yield']
-        #assert len(yields) <=1, yields
-        if len(yields) <= 1:
-            return yields[0] if yields else self.match_track[-1][0]
+        yields = [m for m,s in self.match_track
+                  if s.head=='elem'
+                  and len(s.tail)>1
+                  and s.tail[0].head=='yield']
+
+        if not yields:
+            # No yields; pick last element
+            return self.match_track[-1][0]
+        elif len(yields) == 1:
+            return yields[0]
         else:
+            # Multiple yields
             return tuple(yields)
 
 
 class STreeSelector(STree):
+    def __init__(self, *args):
+        STree.__init__(self, *args)
+        try:
+            self._match = getattr(self, 'match__' + self.head)
+        except AttributeError:
+            self._match = None # We shouldn't be matched
+
     def match__elem_head(self, other):
         if not hasattr(other, 'head'):
             return []
@@ -139,8 +153,8 @@ class STreeSelector(STree):
         assert len(self.tail) == 1
         return self.tail[0]._match(other)
 
-    def _match(self, other):
-        return getattr(self, 'match__' + self.head)(other)
+    # def _match(self, other):
+    #     return getattr(self, 'match__' + self.head)(other)
 
     def match(self, other):
         other.calc_parents()    # TODO add caching?
