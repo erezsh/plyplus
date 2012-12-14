@@ -75,6 +75,8 @@ class STree(object):
         raise Exception('len')
     def __nonzero__(self):
         return True    # XXX ???
+    def __bool__(self):
+        return True    # XXX ???
     def __hash__(self):
         return hash((self.head, tuple(self.tail)))
     def __eq__(self, other):

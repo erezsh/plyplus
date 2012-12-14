@@ -1,17 +1,21 @@
+from __future__ import absolute_import, print_function
+from io import open
+
 import unittest
 import sys, os, glob
 import logging
 import time
 from plyplus import grammars
 from plyplus.plyplus import Grammar, TokValue, ParseError
-from pprint import pprint
 
-from selector_test import TestSelectors
+from .selector_test import TestSelectors
 
 logging.basicConfig(level=logging.INFO)
 
 CUR_PATH = os.path.split(__file__)[0]
-_file = lambda n, *args: file(os.path.join(CUR_PATH, n), *args)
+def _read(n, *args):
+    with open(os.path.join(CUR_PATH, n), *args) as f:
+        return f.read()
 
 if os.name == 'nt':
     if 'PyPy' in sys.version:
@@ -61,13 +65,12 @@ class TestPlyPlus(unittest.TestCase):
 
 
 def test_python_lex(code=FIB, expected=54):
-    g = Grammar(_file('python.g').read())
+    g = Grammar(_read('python.g'))
     l = list(g.lex(code))
-    print l
     for x in l:
         y = x.value
         if isinstance(y, TokValue):
-            logging.debug('%s %s %s', y.type, y, y.line, y.column)
+            logging.debug('%s %s %s', y.type, y.line, y.column)
         else:
             logging.debug('%s %s', x.type, x.value)
     assert len(l) == expected, len(l)
@@ -92,19 +95,20 @@ def test2():
 
 class TestPythonG(unittest.TestCase):
     def setUp(self):
-        self.g = Grammar(grammars.open('python.g'))
+        with grammars.open('python.g') as g:
+            self.g = Grammar(g)
 
     def test_basic1(self):
         g = self.g
-        l = g.parse(_file('python_sample1.py').read())
-        l = g.parse(_file('python_sample2.py').read())
-        l = g.parse(_file('../../examples/calc.py').read())
-        l = g.parse(_file('../grammar_lexer.py').read())
-        l = g.parse(_file('../grammar_parser.py').read())
-        l = g.parse(_file('../strees.py').read())
-        l = g.parse(_file('../grammars/python_indent_postlex.py').read())
+        l = g.parse(_read('python_sample1.py'))
+        l = g.parse(_read('python_sample2.py'))
+        l = g.parse(_read('../../examples/calc.py'))
+        l = g.parse(_read('../grammar_lexer.py'))
+        l = g.parse(_read('../grammar_parser.py'))
+        l = g.parse(_read('../strees.py'))
+        l = g.parse(_read('../grammars/python_indent_postlex.py'))
 
-        l = g.parse(_file('../plyplus.py').read())
+        l = g.parse(_read('../plyplus.py'))
 
         l = g.parse("c,d=x,y=a+b\nc,d=a,b\n")
 
@@ -146,19 +150,20 @@ def eggs9():
         for f in files:
             f2 = os.path.join(path,f)
             logging.info( f2 )
-            l = g.parse(file(f2).read())
+            l = g.parse(_read(f2))
 
         end = time.time()
         logging.info( "test_python_lib (%d files), time: %s secs"%(len(files), end-start) )
 
     def test_python4ply_sample(self):
         g = self.g
-        l = g.parse(_file(r'python4ply-sample.py').read())
+        l = g.parse(_read(r'python4ply-sample.py'))
 
 
 class TestConfigG(unittest.TestCase):
     def setUp(self):
-        self.g = Grammar(grammars.open('config.g'))
+        with grammars.open('config.g') as g:
+            self.g = Grammar(g)
 
     def test_config_parser(self):
         g = self.g

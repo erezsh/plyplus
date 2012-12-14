@@ -18,8 +18,8 @@ Plyplus is a general-purpose parser built on top of [PLY](http://www.dabeaz.com/
  - Builds an AST automagically based on the grammar
  - Selectors: run powerful css-like queries on the AST
  - Nested grammars (a grammar within a grammar. Useful for HTML/CSS, for example)
- - Python 2.7 and PyPy 1.9 compatible
- - Fully-working Python grammar included
+ - Python 2.7, Python 3.3 and PyPy 1.9 compatible
+ - Fully-working Python 2.x grammar included
 
 ## Q & A
 

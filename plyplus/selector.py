@@ -1,9 +1,11 @@
+from __future__ import absolute_import
+
 import re, os
 from itertools import chain
 
-from strees import STree, is_stree
-from plyplus import Grammar
-import grammars
+from .strees import STree, is_stree
+from .plyplus import Grammar
+from . import grammars
 
 def sum_list(l):
     return chain(*l)  # Fastest way according to my tests

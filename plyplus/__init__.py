@@ -1,6 +1,8 @@
-from plyplus import Grammar, SVisitor, STransformer, is_stree
+from __future__ import absolute_import
 
-from plyplus import PlyplusException, GrammarException, TokenizeError, ParseError
+from .plyplus import Grammar, SVisitor, STransformer, is_stree
 
-import selector
+from .plyplus import PlyplusException, GrammarException, TokenizeError, ParseError
+
+from . import selector
 selector.install()

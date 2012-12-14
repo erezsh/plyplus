@@ -1,12 +1,14 @@
+from __future__ import absolute_import
+
 from ply import yacc
 
-from strees import STree as S
+from .strees import STree as S
+
+from .grammar_lexer import tokens, lexer
 
 DEBUG = False
 YACC_TAB_MODULE = "plyplus_grammar_parsetab"
 
-import grammar_lexer
-from grammar_lexer import tokens
 
 def p_extgrammar(p):
     """extgrammar : grammar
@@ -122,5 +124,5 @@ start = "extgrammar"
 
 _parser = yacc.yacc(debug=DEBUG, tabmodule=YACC_TAB_MODULE)     # Return parser object
 def parse(text, debug=False):
-    grammar_lexer.lexer.lineno=1
-    return _parser.parse(text,lexer=grammar_lexer.lexer, debug=debug)
+    lexer.lineno=1
+    return _parser.parse(text,lexer=lexer, debug=debug)

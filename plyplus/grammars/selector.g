@@ -30,5 +30,5 @@ REGEXP: '/.*?[^\\]/';
 WS: '[ \t\f]+' (%ignore);
 
 ###
-from selector import STreeSelector
+from plyplus.selector import STreeSelector
 self.STree = STreeSelector

@@ -1,14 +1,17 @@
 "Author: Erez Shinan, erezshin at gmail.com"
 
+from __future__ import absolute_import
+
 import re, os
 import types
 import itertools
 
 from ply import lex, yacc
 
-import grammar_parser
+from . import grammar_parser
+from .utils import StringTypes, StringType
 
-from strees import STree, SVisitor, STransformer, is_stree
+from .strees import STree, SVisitor, STransformer, is_stree
 
 # -- Must!
 #TODO: Support States
@@ -164,7 +167,7 @@ class SimplifyTokenDefs_Visitor(SVisitor):
         CollectTokenDefs_Visitor(self.tokendefs).visit(tree)
         SVisitor.visit(self, tree)
 
-        for tokendef in self.tokendefs.itervalues():
+        for tokendef in self.tokendefs.values():
             self._simplify_token(tokendef)
 
         return self.tokendefs
@@ -189,15 +192,15 @@ class NameAnonymousTokens_Visitor(SVisitor):
         self._rules_to_add = []
 
         self.token_name_from_value = {}
-        for name, tokendef in tokendefs.iteritems():
+        for name, tokendef in tokendefs.items():
             self.token_name_from_value[tokendef.tail[1]] = name
 
     def _get_new_tok_name(self, tok):
-        return '_%s_%d' % (get_token_name(tok[1:-1], self.ANON_TOKEN_ID), self._count.next())
+        return '_%s_%d' % (get_token_name(tok[1:-1], self.ANON_TOKEN_ID), next(self._count))
 
     def rule(self, tree):
         for i, child in enumerate(tree.tail):
-            if isinstance(child, str) and child.startswith("'"):
+            if isinstance(child, StringTypes) and child.startswith("'"):
                 child = _unescape_token_def(child)
                 try:
                     tok_name = self.token_name_from_value[child]
@@ -220,7 +223,7 @@ class SimplifyGrammar_Visitor(SVisitor):
         self._rules_to_add = []
 
     def _get_new_rule_name(self):
-        return '_%s_%d' % (self.ANON_RULE_ID, self._count.next())
+        return '_%s_%d' % (self.ANON_RULE_ID, next(self._count))
 
     def _flatten(self, tree):
         to_expand = [i for i, subtree in enumerate(tree.tail) if is_stree(subtree) and subtree.head == tree.head]
@@ -383,9 +386,9 @@ class FilterTokens_Tranformer(STransformer):
             return tree
         return tree.__class__(tree.head, [x for x in tree.tail if is_stree(x)])
 
-class TokValue(str):
+class TokValue(StringType):
     def __new__(cls, s, type=None, line=None, column=None, pos_in_stream=None, index=None):
-        inst = str.__new__(cls,s)
+        inst = StringType.__new__(cls,s)
         inst.type = type
         inst.line = line
         inst.column = column
@@ -396,7 +399,7 @@ class TokValue(str):
     def __repr__(self):
         if self.line and self.column:
             return repr("%s:%s|%s"%(self.line, self.column, self))
-        return str.__repr__(self)
+        return StringType.__repr__(self)
 
 class LexerWrapper(object):
     def __init__(self, lexer, newline_tokens_names, newline_char='\n', ignore_token_names=()):
@@ -460,14 +463,14 @@ class LexerWrapper(object):
 
 class Grammar(object):
     def __init__(self, grammar, **options):
-        if isinstance(grammar, file):
+        if hasattr(grammar, 'read'):
             # PLY turns "a.b" into "b", so gotta get rid of the dot.
             tab_filename = "parsetab_%s" % os.path.split(grammar.name)[1].replace('.', '_')
             source = grammar.name
             grammar = grammar.read()
         else:
-            assert isinstance(grammar, str)
-            tab_filename = "parsetab_%s" % str(hash(grammar)%(2L**32))
+            assert isinstance(grammar, StringTypes)
+            tab_filename = "parsetab_%s" % str(hash(grammar)%(2**32))
             source = '<string>'
 
         grammar_tree = grammar_parser.parse(grammar)
@@ -624,9 +627,10 @@ class _Grammar(object):
                            +'\treturn t')
                     s = ('def t_%s(self, t):\n\t%s\n%s\nx = t_%s\n'
                         %(name, repr(token_value), code, name))
-                    exec(s)
+                    d = {}
+                    exec(s, d)
 
-                    setattr(self, 't_%s'%name, x.__get__(self))
+                    setattr(self, 't_%s'%name, d['x'].__get__(self))
                     setattr(self, '_%s_unless_toks_dict'%name, unless_toks_dict)
                     setattr(self, '_%s_unless_toks_regexps'%name, unless_toks_regexps)
 
@@ -648,7 +652,7 @@ class _Grammar(object):
             self._add_token(name, token_value)
 
     def _add_token(self, name, token_value):
-        assert isinstance(token_value, str)
+        assert isinstance(token_value, StringTypes), token_value
         self.tokens.append(name)
         setattr(self, 't_%s'%name, token_value)
 
@@ -670,9 +674,9 @@ class _Grammar(object):
             code = '\tp[0] = self.STree(%r, p[1:])' % (rule_name,)
         s = ('def p_%s(self, p):\n\t%r\n%s\nx = p_%s\n'
             %(rule_name, rule_def, code, rule_name))
-        exec(s)
-
-        setattr(self, 'p_%s'%rule_name, types.MethodType(x, self))
+        d = {}
+        exec(s, d)
+        setattr(self, 'p_%s'%rule_name, types.MethodType(d['x'], self))
 
 
     @staticmethod
@@ -689,7 +693,7 @@ class _Grammar(object):
             msg = "Syntax error in input (details unknown): %s" % p
 
         if self.debug:
-            print msg
+            print(msg)
 
         self.errors.append(msg)
 

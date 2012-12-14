@@ -1,4 +1,5 @@
 import os.path
+from io import open
 
 _open = open
 def open(grammar_name):

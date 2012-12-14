@@ -48,4 +48,4 @@ t_ignore = " \t\r"
 def t_error(t):
     raise Exception("Illegal character in grammar: %r in %r" % (t.value[0], t.value[:10] ))
 
-lexer  = lex.lex(lextab=LEX_TAB_MODULE)
+lexer = lex.lex(lextab=LEX_TAB_MODULE)
