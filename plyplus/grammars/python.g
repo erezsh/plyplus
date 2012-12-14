@@ -43,8 +43,8 @@ start: (NEWLINE|stmt)+;
 
   exec_stmt : EXEC expr (IN test (COMMA test)?)? ;
 
-  print_stmt : PRINT ((print_into COMMA)? test (COMMA test)+? COMMA?)? 
-    | PRINT print_into
+  print_stmt : PRINT (print_into COMMA)? test (COMMA test)+? COMMA?
+    | PRINT print_into?
     ;
   print_into : RIGHTSHIFT test;
 
@@ -198,7 +198,7 @@ decorators : decorator+ ;
 
 vararg : fpdef (EQUAL test)? ;
 
-  yield_expr : YIELD testlist? ;
+yield_expr : YIELD testlist? ;
 
 // There are small silly differences between list comprehensions and generators.
 // Additionally, each of them has its own subtlities,
@@ -213,7 +213,8 @@ vararg : fpdef (EQUAL test)? ;
 // [1, 2]
 
 tuple : LPAR tuplemaker? RPAR ;
-@tuplemaker : test (gen_for | (COMMA test)+? COMMA?) ;
+@tuplemaker : test gen_for
+            | test (COMMA | (COMMA test)+ COMMA? ) ;
 gen_for : FOR exprlist IN or_test gen_iter?  ;
 gen_if : IF stunted_test gen_iter?  ;
 gen_iter : gen_for | gen_if ;
@@ -236,7 +237,7 @@ repr : BACKQUOTE testlist1 BACKQUOTE;
     | list
     | dict
     | set
-    | LPAR yield_expr RPAR
+    | LPAR (yield_expr|test) RPAR
     | repr
     | name
     | number
