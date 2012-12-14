@@ -5,6 +5,8 @@ from __future__ import absolute_import
 import re, os
 import types
 import itertools
+import logging
+logging.basicConfig(level=logging.INFO)
 
 from ply import lex, yacc
 
@@ -505,6 +507,9 @@ class _Grammar(object):
         self.lexer_postproc = None
         self._newline_value = '\n'
 
+        self.logger = logging.getLogger('Grammar')
+        self.logger.setLevel(logging.ERROR)
+
         # -- Build Grammar --
         self.subgrammars = {}
         ExtractSubgrammars_Visitor(source_name, tab_filename, self.options).visit(grammar_tree)
@@ -537,7 +542,7 @@ class _Grammar(object):
 
         # -- Build Parser --
         if not self.just_lex:
-            self.parser = yacc.yacc(module=self, debug=self.debug, tabmodule=tab_filename)
+            self.parser = yacc.yacc(module=self, debug=self.debug, tabmodule=tab_filename, errorlog=self.logger)
 
     def __repr__(self):
         return '<Grammar from %s, tab at %s>' % (self.source_name, self.tab_filename)
