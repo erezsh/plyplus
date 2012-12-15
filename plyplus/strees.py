@@ -1,6 +1,10 @@
+from __future__ import absolute_import
+
 import functools
 from weakref import ref
 from copy import deepcopy
+
+from .utils import StringTypes, StringType
 
 def classify(seq, key=lambda x:x):
     d = {}
@@ -22,7 +26,7 @@ def _cache_0args(obj):
         return _cache[_id]
     return memoizer
 
-class Str(str):
+class Str(StringType):
     pass
 
 class STree(object):
@@ -37,7 +41,7 @@ class STree(object):
         if type(tail) != list:
             tail = list(tail)
         for i, x in enumerate(tail):
-            if type(x) == str:
+            if type(x) in StringTypes:
                 tail[i] = Str(x)
         self.tail = tail
         self.clear_cache()
@@ -155,7 +159,7 @@ class STree(object):
             try:
                 l += n._pretty(indent_str)
             except AttributeError:
-                l += [ indent_str*(self.depth+1), str(n), '\n' ]
+                l += [ indent_str*(self.depth+1), StringType(n), '\n' ]
 
         return l
 
