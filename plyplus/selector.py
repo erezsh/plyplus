@@ -43,8 +43,8 @@ class _Match(object):
 
 
 class STreeSelector(STree):
-    def __init__(self, *args):
-        STree.__init__(self, *args)
+    def __init__(self, *args, **kw):
+        STree.__init__(self, *args, **kw)
         try:
             self._match = getattr(self, 'match__' + self.head)
         except AttributeError:

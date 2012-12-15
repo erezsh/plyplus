@@ -674,9 +674,9 @@ class _Grammar(object):
             self.rules_to_flatten.append( rule_name )
 
         if RuleMods.EXPAND1 in mods or RuleMods.EXPAND in mods:  # EXPAND is here just for the speed-up
-            code = '\tp[0] = self.STree(%r, p[1:]) if len(p)>2 else p[1]' % (rule_name,)
+            code = '\tp[0] = self.STree(%r, p[1:], skip_adjustments=True) if len(p)>2 else p[1]' % (rule_name,)
         else:
-            code = '\tp[0] = self.STree(%r, p[1:])' % (rule_name,)
+            code = '\tp[0] = self.STree(%r, p[1:], skip_adjustments=True)' % (rule_name,)
         s = ('def p_%s(self, p):\n\t%r\n%s\nx = p_%s\n'
             %(rule_name, rule_def, code, rule_name))
         d = {}

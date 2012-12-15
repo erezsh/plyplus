@@ -32,8 +32,11 @@ class Str(StringType):
 class STree(object):
     # __slots__ = 'head', 'tail', '_cache', 'parent', 'index_in_parent'
 
-    def __init__(self, head, tail):
-        self.reset(head, tail)
+    def __init__(self, head, tail, skip_adjustments=False):
+        if skip_adjustments:
+            self.head, self.tail = head, tail
+        else:
+            self.reset(head, tail)
 
     def reset(self, head, tail):
         "Warning: calculations done on tree will have to be manually re-run on the tail elements"    # XXX
