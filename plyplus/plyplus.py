@@ -589,6 +589,30 @@ class _Grammar(object):
         else:
             raise GrammarException( "Unknown option: %s " % name )
 
+
+    def _extract_unless_tokens(self, modtokenlist):
+        unless_toks_dict = {}
+        unless_toks_regexps = []
+        for modtoken in modtokenlist.tail:
+            assert modtoken.head == 'token'
+            modtok_name, modtok_value = modtoken.tail
+
+
+            self._add_token(modtok_name, modtok_value)
+
+            if not re.search('[^\w/-]', modtok_value):   # definitely not a regexp, let's optimize it
+                unless_toks_dict[modtok_value] = modtok_name
+            else:
+                if not modtok_value.startswith('^'):
+                    modtok_value = '^' + modtok_value
+                if not modtok_value.endswith('$'):
+                    modtok_value = modtok_value + '$'
+                unless_toks_regexps += [(re.compile(modtok_value), modtok_name)]
+
+        unless_toks_regexps.sort(key=lambda x:len(x[0].pattern), reverse=True)
+
+        return unless_toks_dict, unless_toks_regexps
+
     def _add_token_with_mods(self, name, defin):
         token_value, token_features = defin
 
@@ -602,31 +626,14 @@ class _Grammar(object):
 
                 if mod == '%unless':
                     assert not token_added, "token already added, can't issue %unless"
-                    unless_toks_dict = {}
-                    unless_toks_regexps = []
-                    for modtoken in modtokenlist.tail:
-                        assert modtoken.head == 'token'
-                        modtok_name, modtok_value = modtoken.tail
 
-
-                        self._add_token(modtok_name, modtok_value)
-
-                        if not re.search('[^\w/-]', modtok_value):   # definitely not a regexp, let's optimize it
-                            unless_toks_dict[modtok_value] = modtok_name
-                        else:
-                            if not modtok_value.startswith('^'):
-                                modtok_value = '^' + modtok_value
-                            if not modtok_value.endswith('$'):
-                                modtok_value = modtok_value + '$'
-                            unless_toks_regexps += [(modtok_value, modtok_name)]
-
-                    unless_toks_regexps.sort(key=lambda x:x[0].__len__(), reverse=True)
+                    unless_toks_dict, unless_toks_regexps = self._extract_unless_tokens(modtokenlist)
 
                     self.tokens.append(name)
 
                     code = ('\tt.type = self._%s_unless_toks_dict.get(t.value, %r)\n' % (name, name)
                            +'\tfor regexp, tokname in self._%s_unless_toks_regexps:\n' % (name,)
-                           +'\t\tif re.match(regexp, t.value):\n'
+                           +'\t\tif regexp.match(t.value):\n'
                            +'\t\t\tt.type = tokname\n'
                            +'\t\t\tbreak\n'
                            +'\treturn t')
