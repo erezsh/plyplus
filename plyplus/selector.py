@@ -11,6 +11,8 @@ def sum_list(l):
     return chain(*l)  # Fastest way according to my tests
 
 class _Match(object):
+    __slots__ = 'match_track'
+
     def __init__(self, matched, selector):
         self.match_track = [(matched, selector)]
 
@@ -43,8 +45,25 @@ class _Match(object):
 
 
 class STreeSelector(STree):
-    def __init__(self, *args, **kw):
-        STree.__init__(self, *args, **kw)
+    def _post_init(self):
+
+        if self.head=='modifier':
+            assert self.tail[0].head == 'modifier_name' and len(self.tail[0].tail) == 1
+            modifier_name = self.tail[0].tail[0]
+
+            try:
+                f = getattr(self, 'match__modifier__' + modifier_name.replace('-', '_').replace(':',''))
+            except AttributeError:
+                raise NotImplementedError("Didn't implement %s yet" % modifier_name)
+            else:
+                setattr(self, 'match__modifier', f)
+
+        elif self.head=='elem':
+            if self.tail[-1].head=='modifier':
+                self.match__elem = self.match__elem_with_modifier
+            else:
+                self.match__elem = self.match__elem_without_modifier
+
         try:
             self._match = getattr(self, 'match__' + self.head)
         except AttributeError:
@@ -72,29 +91,24 @@ class STreeSelector(STree):
         regexp = regexp[1:-1]
         return [other] if re.match(regexp, s) else []
 
-    def match__modifier(self, other):
-        assert self.tail[0].head == 'modifier_name' and len(self.tail[0].tail) == 1
-        modifier_name = self.tail[0].tail[0]
+    def match__modifier__is_parent(self, other):
+        return [other] if (is_stree(other) and other.tail) else []
+    def match__modifier__is_leaf(self, other):
+        return [other] if not is_stree(other) else []
 
-        if modifier_name == ':is-parent':
-            return [other] if (is_stree(other) and other.tail) else []
-        elif modifier_name == ':is-leaf':
-            return [other] if not is_stree(other) else []
+    def match__elem_with_modifier(self, other):
+        matches = self.tail[-2]._match(other)   # skip possible yield
+        matches = filter(self.tail[-1].match__modifier, matches)
+        return [_Match(m, self) for m in matches]
 
-        raise NotImplementedError("Didn't implement %s yet" % modifier_name)
+    def match__elem_without_modifier(self, other):
+        matches = self.tail[-1]._match(other)   # skip possible yield
+        return [_Match(m, self) for m in matches]
+
 
     def match__selector_list(self, other):
         res = sum_list(kid._match([other]) for kid in self.tail)
         return [r.get_result() for r in res]    # lose match objects, localize yields
-
-    def match__elem(self, other):
-        if self.tail[0].head == 'yield':
-            matches = self.tail[1]._match(other)
-        else:
-            matches = self.tail[0]._match(other)
-        if len(self.tail)>1 and self.tail[1].head=='modifier':
-            matches = filter(self.tail[1].match__modifier, matches)
-        return [_Match(m, self) for m in matches]
 
     def _travel_tree_by_op(self, tree, op):
         if not hasattr(tree, 'parent') or tree.parent is None:
@@ -171,7 +185,9 @@ def selector(text, *args, **kw):
     kw = dict((k,re.escape(v)) for k,v in kw.iteritems())
     text = text.format(*args, **kw)
     if text not in selector_dict:
-        selector_dict[text] = selector_grammar.parse(text)
+        selector = selector_grammar.parse(text)
+        selector.map(lambda x: is_stree(x) and x._post_init())
+        selector_dict[text] = selector
     return selector_dict[text]
 
 def install():

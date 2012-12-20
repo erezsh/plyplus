@@ -21,7 +21,7 @@ HEAD: '[a-z_][a-z_0-9]*';
 CLASS: '\.[a-z_][a-z_0-9]*';
 MODIFIER: ':[a-z][a-z-]*';
 
-INDEX: '\\d+';
+INDEX: '\d+';
 LPAR:  '\(';
 RPAR: '\)';
 
