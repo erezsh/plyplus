@@ -166,16 +166,19 @@ class STreeSelector(STree):
 selector_dict = {}
 
 selector_grammar = Grammar(grammars.open('selector.g'))
-def selector(s):
-    if s not in selector_dict:
-        selector_dict[s] = selector_grammar.parse(s)
-    return selector_dict[s]
+def selector(text, *args, **kw):
+    args = map(re.escape, args)
+    kw = dict((k,re.escape(v)) for k,v in kw.iteritems())
+    text = text.format(*args, **kw)
+    if text not in selector_dict:
+        selector_dict[text] = selector_grammar.parse(text)
+    return selector_dict[text]
 
 def install():
-    def select(self, s):
-        return selector(s).match(self)
-    def select1(self, s):
-        [r] = self.select(s)
+    def select(self, *args, **kw):
+        return selector(*args, **kw).match(self)
+    def select1(self, *args, **kw):
+        [r] = self.select(*args, **kw)
         return r
 
     STree.select = select
