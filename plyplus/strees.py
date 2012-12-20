@@ -82,6 +82,9 @@ class STree(object):
                 return
         raise ValueError("id not found: %s"%child_id)
 
+    def remove_from_parent(self):
+        self.parent().remove_kid_by_id(id(self))
+
     def __len__(self):
         raise Exception('len')
     def __nonzero__(self):
