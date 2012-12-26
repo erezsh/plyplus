@@ -136,6 +136,17 @@ class STree(object):
             context.append( func(kid) )
         return context
 
+    def filter(self, func, context=None):
+        if context is None:
+            context = []
+        if func(self):
+            context.append( self )
+        for kid in self.tail:
+            if hasattr(kid, 'filter'):
+                kid.filter(func, context)
+        return context
+
+
     def _to_pydot(self, graph):
         import pydot
         color = hash(self.head) & 0xffffff

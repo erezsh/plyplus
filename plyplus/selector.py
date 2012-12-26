@@ -107,8 +107,14 @@ class STreeSelector(STree):
 
 
     def match__selector_list(self, other):
-        res = sum_list(kid._match([other]) for kid in self.tail)
-        return [r.get_result() for r in res]    # lose match objects, localize yields
+        assert self.head == 'result_list', 'call to _init_selector_list failed!'
+        set_, = self.tail
+        return [other] if other in set_ else []
+
+    def _init_selector_list(self, other):
+        res = sum_list(kid._match(other) for kid in self.tail)
+        res = [r.get_result() for r in res]    # lose match objects, localize yields
+        self.reset('result_list', [set(res)])
 
     def _travel_tree_by_op(self, tree, op):
         if not hasattr(tree, 'parent') or tree.parent is None:
@@ -174,6 +180,13 @@ class STreeSelector(STree):
 
     def match(self, other):
         other.calc_parents()    # TODO add caching?
+
+        # Evaluate all selector_lists into result_lists
+        selector_lists = self.filter(lambda x: is_stree(x) and x.head == 'selector_list')
+        for selector_list in reversed(selector_lists):  # reverse turns pre-order -> post-order
+            selector_list._init_selector_list(other)
+
+        # Match and return results
         return [x.get_result() for x in self._match(other)]
 
 

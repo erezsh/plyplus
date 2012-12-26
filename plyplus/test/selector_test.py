@@ -59,6 +59,12 @@ class TestSelectors(unittest.TestCase):
         assert set( selector('(/a/,/b$/)').match(tree1) ) == set('ab')
         assert set( selector('(/e/, (/a/,/b$/), /c/)').match(tree1) ) == set('abce')
 
+    def test_lists2(self):
+        tree1, tree2 = self.tree1, self.tree2
+        assert set( tree1.select('(branch /d/)') ) == set('d')
+        assert tree1.select1('=(=branch /d/) + (=branch /e/)').tail[0].tail[0] == 'd'
+        assert len( self.tree2.select('(=branch>name>/c/) branch /b/') )
+
     def test_yield(self):
         tree1, tree2 = self.tree1, self.tree2
         assert list( selector('=name /a/').match(tree1) )[0].head == 'name'
