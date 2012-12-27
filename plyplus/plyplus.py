@@ -130,8 +130,8 @@ class ExtractSubgrammars_Visitor(SVisitor):
     def subgrammar(self, tree):
         assert self.last_tok
         assert len(tree.tail) == 1
-        source_name = '%s:%s'%(self.parent_source_name, self.last_tok.lower())
-        tab_filename = '%s_%s'%(self.parent_tab_filename, self.last_tok.lower())
+        source_name = '%s:%s' % (self.parent_source_name, self.last_tok.lower())
+        tab_filename = '%s_%s' % (self.parent_tab_filename, self.last_tok.lower())
         subgrammar = _Grammar(tree.tail[0], source_name, tab_filename, **self.parent_options)
         tree.head, tree.tail = 'subgrammarobj', [subgrammar]
 
@@ -139,7 +139,7 @@ class ApplySubgrammars_Visitor(SVisitor):
     def __init__(self, subgrammars):
         self.subgrammars = subgrammars
     def __default__(self, tree):
-        for i,tok in enumerate(tree.tail):
+        for i, tok in enumerate(tree.tail):
             if type(tok) == TokValue and tok.type in self.subgrammars:
                 parsed_tok = self.subgrammars[tok.type].parse(tok)
                 assert parsed_tok.head == 'start'
@@ -227,7 +227,8 @@ class SimplifyGrammar_Visitor(SVisitor):
     def _get_new_rule_name(self):
         return '_%s_%d' % (self.ANON_RULE_ID, next(self._count))
 
-    def _flatten(self, tree):
+    @staticmethod
+    def _flatten(tree):
         to_expand = [i for i, subtree in enumerate(tree.tail) if is_stree(subtree) and subtree.head == tree.head]
         if to_expand:
             tree.expand_kids_by_index(*to_expand)
@@ -299,14 +300,14 @@ class SimplifyGrammar_Visitor(SVisitor):
         if self._flatten(tree):
             changed = True
 
-        for i,child in enumerate(tree.tail):
+        for i, child in enumerate(tree.tail):
             if is_stree(child) and child.head == 'rules_list':
                 # found. now flatten
                 new_rules_list = []
                 for option in child.tail:
                     new_rules_list.append(STree('rule', []))
                     # for each rule in rules_list
-                    for j,child2 in enumerate(tree.tail):
+                    for j, child2 in enumerate(tree.tail):
                         if j == i:
                             new_rules_list[-1].tail.append(option)
                         else:
@@ -329,37 +330,47 @@ class ToPlyGrammar_Tranformer(STransformer):
     This is only a partial transformation that should be post-processd in order to apply
     XXX Probably a bad class name
     """
-    def rules_list(self, tree):
+    @staticmethod
+    def rules_list(tree):
         return '\n\t| '.join(tree.tail)
 
-    def rule(self, tree):
+    @staticmethod
+    def rule(tree):
         return ' '.join(tree.tail)
 
-    def extrule(self, tree):
+    @staticmethod
+    def extrule(tree):
         return ' '.join(tree.tail)
 
-    def oper(self, tree):
-        return '(%s)%s'%(' '.join(tree.tail[:-1]), tree.tail[-1])
+    @staticmethod
+    def oper(tree):
+        return '(%s)%s' % (' '.join(tree.tail[:-1]), tree.tail[-1])
 
-    def ruledef(self, tree):
+    @staticmethod
+    def ruledef(tree):
         return STree('rule', (tree.tail[0], '%s\t: %s'%(tree.tail[0], tree.tail[1])))
 
-    def optiondef(self, tree):
+    @staticmethod
+    def optiondef(tree):
         return STree('option', tree.tail)
 
-    def fragmentdef(self, tree):
+    @staticmethod
+    def fragmentdef(tree):
         return STree('fragment', [None, None])
 
-    def tokendef(self, tree):
+    @staticmethod
+    def tokendef(tree):
         if len(tree.tail) > 2:
             return STree('token_with_mods', [tree.tail[0], tree.tail[1:]])
         else:
             return STree('token', tree.tail)
 
-    def grammar(self, tree):
+    @staticmethod
+    def grammar(tree):
         return tree.tail
 
-    def extgrammar(self, tree):
+    @staticmethod
+    def extgrammar(tree):
         return tree.tail
 
 
@@ -390,7 +401,7 @@ class FilterTokens_Tranformer(STransformer):
 
 class TokValue(StringType):
     def __new__(cls, s, type=None, line=None, column=None, pos_in_stream=None, index=None):
-        inst = StringType.__new__(cls,s)
+        inst = StringType.__new__(cls, s)
         inst.type = type
         inst.line = line
         inst.column = column
@@ -490,10 +501,10 @@ class Grammar(object):
 class _Grammar(object):
     def __init__(self, grammar_tree, source_name, tab_filename, **options):
         self.options = dict(options)
-        self.debug=bool(options.pop('debug', False))
-        self.just_lex=bool(options.pop('just_lex', False))
-        self.ignore_postproc=bool(options.pop('ignore_postproc', False))
-        self.auto_filter_tokens=bool(options.pop('auto_filter_tokens', True))
+        self.debug = bool(options.pop('debug', False))
+        self.just_lex = bool(options.pop('just_lex', False))
+        self.ignore_postproc = bool(options.pop('ignore_postproc', False))
+        self.auto_filter_tokens = bool(options.pop('auto_filter_tokens', True))
         if options:
             raise TypeError("Unknown options: %s"%options.keys())
 
@@ -525,12 +536,12 @@ class _Grammar(object):
             ply_grammar, = ply_grammar_and_code
         else:
             ply_grammar, code = ply_grammar_and_code
-            exec(code)
+            exec(code, locals())
 
         for x in ply_grammar:
-            type, (name, defin) = x.head, x.tail
-            assert type in ('token', 'token_with_mods', 'rule', 'option', 'fragment'), "Can't handle type %s"%type
-            handler = getattr(self, '_add_%s' % type)
+            type_, (name, defin) = x.head, x.tail
+            assert type_ in ('token', 'token_with_mods', 'rule', 'option', 'fragment'), "Can't handle type %s"%type_
+            handler = getattr(self, '_add_%s' % type_)
             handler(name, defin)
 
         # -- Build lexer --
@@ -669,7 +680,7 @@ class _Grammar(object):
         setattr(self, 't_%s'%name, token_value)
 
     def _add_rule(self, rule_name, rule_def):
-        mods, name = re.match('([@#?]*)(.*)', rule_name).groups()
+        mods, = re.match('([@#?]*).*', rule_name).groups()
         if mods:
             assert rule_def[:len(mods)] == mods
             rule_def = rule_def[len(mods):]

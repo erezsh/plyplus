@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-import re, os
+import re
 from itertools import chain
 
 from .strees import STree, is_stree
@@ -13,8 +13,8 @@ def sum_list(l):
 class _Match(object):
     __slots__ = 'match_track'
 
-    def __init__(self, matched, selector):
-        self.match_track = [(matched, selector)]
+    def __init__(self, matched, selector_instance):
+        self.match_track = [(matched, selector_instance)]
 
     def __hash__(self):
         return hash(tuple(self.match_track))
@@ -29,7 +29,7 @@ class _Match(object):
         self.match_track += other.match_track
 
     def get_result(self):
-        yields = [m for m,s in self.match_track
+        yields = [m for m, s in self.match_track
                   if s.head=='elem'
                   and len(s.tail)>1
                   and s.tail[0].head=='yield']
@@ -47,7 +47,7 @@ class _Match(object):
 class STreeSelector(STree):
     def _post_init(self):
 
-        if self.head=='modifier':
+        if self.head == 'modifier':
             assert self.tail[0].head == 'modifier_name' and len(self.tail[0].tail) == 1
             modifier_name = self.tail[0].tail[0]
 
@@ -58,8 +58,8 @@ class STreeSelector(STree):
             else:
                 setattr(self, 'match__modifier', f)
 
-        elif self.head=='elem':
-            if self.tail[-1].head=='modifier':
+        elif self.head == 'elem':
+            if self.tail[-1].head == 'modifier':
                 self.match__elem = self.match__elem_with_modifier
             else:
                 self.match__elem = self.match__elem_without_modifier
@@ -131,18 +131,17 @@ class STreeSelector(STree):
                 for x in tree.parent().tail[ :tree.index_in_parent ]:
                     yield x
             elif op == ' ': # travel back to root
-                to_check = []
                 parent = tree.parent()  # TODO: what happens if the parent is garbage-collected?
                 while parent is not None:
                     yield parent
                     parent = parent.parent() if parent.parent else None
 
-        except (IndexError, ) as e:
+        except IndexError:
             pass
 
 
     def _match_selector_op(self, matches_so_far):
-        selector = self.tail[0]
+        _selector = self.tail[0]
         op = self.tail[1].tail[0] if len(self.tail) > 1 else ' '
 
 
@@ -151,7 +150,7 @@ class STreeSelector(STree):
             to_check = list(self._travel_tree_by_op(match.last_elem_matched, op))
 
             if to_check:
-                for match_found in selector.match__selector(to_check):
+                for match_found in _selector.match__selector(to_check):
                     match_found.extend( match )
                     matches_found.append( match_found )
 
@@ -195,12 +194,12 @@ selector_dict = {}
 selector_grammar = Grammar(grammars.open('selector.g'))
 def selector(text, *args, **kw):
     args = map(re.escape, args)
-    kw = dict((k,re.escape(v)) for k,v in kw.iteritems())
+    kw = dict((k, re.escape(v)) for k, v in kw.iteritems())
     text = text.format(*args, **kw)
     if text not in selector_dict:
-        selector = selector_grammar.parse(text)
-        selector.map(lambda x: is_stree(x) and x._post_init())
-        selector_dict[text] = selector
+        selector_ast = selector_grammar.parse(text)
+        selector_ast.map(lambda x: is_stree(x) and x._post_init())
+        selector_dict[text] = selector_ast
     return selector_dict[text]
 
 def install():

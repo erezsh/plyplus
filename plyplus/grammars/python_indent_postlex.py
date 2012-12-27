@@ -1,8 +1,8 @@
 from copy import copy
 
-NL_type='NEWLINE'
-INDENT_type='INDENT'
-DEDENT_type='DEDENT'
+NL_type = 'NEWLINE'
+INDENT_type = 'INDENT'
+DEDENT_type = 'DEDENT'
 PAREN_OPENERS = 'LPAR', 'LBRACE', 'LSQB'
 PAREN_CLOSERS = 'RPAR', 'RBRACE', 'RSQB'
 
@@ -91,8 +91,8 @@ class PythonIndentTracker:
 
     def handle_newline(self, tok):  # Do (most) indentation
         text = tok.value
-        indent_str = text.rsplit('\n',1)[1] # Tabs and spaces
-        text = text[:text.rfind('\n')+1]    # Without the indent
+        indent_str = text.rsplit('\n', 1)[1] # Tabs and spaces
+        text = text[:text.rfind('\n') + 1]    # Without the indent
 
         #print tok.start, tok.stop, `tok.text`
         #indent = len(indent_str.replace('\t', self.tab_str))
@@ -117,7 +117,7 @@ class PythonIndentTracker:
                 new_token.value = indent_str
                 self.token_queue.append(new_token)
 
-            assert indent == self.indent_level[-1], '%s != %s'%(indent, self.indent_level[-1])
+            assert indent == self.indent_level[-1], '%s != %s' % (indent, self.indent_level[-1])
 
 
         return tok
