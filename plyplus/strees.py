@@ -98,6 +98,9 @@ class STree(object):
             return self.head == other.head and self.tail == other.tail
         except AttributeError:
             return False
+    def __ne__(self, other):
+        return not (self == other)
+
 
     def __deepcopy__(self, memo):
         return type(self)(self.head, deepcopy(self.tail, memo))
