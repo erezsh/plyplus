@@ -13,7 +13,7 @@ from ply import lex, yacc
 from . import PLYPLUS_DIR, grammar_parser
 from .utils import StringTypes, StringType
 
-from .strees import STree, SVisitor, STransformer, is_stree, Str
+from .strees import STree, SVisitor, STransformer, is_stree, SVisitor_Recurse, Str
 
 # -- Must!
 #TODO: Support States
@@ -124,7 +124,7 @@ class ExtractSubgrammars_Visitor(SVisitor):
 
         self.last_tok = None
 
-    def pre_tokendef(self, tok):
+    def tokendef(self, tok):
         self.last_tok = tok.tail[0]
     def subgrammar(self, tree):
         assert self.last_tok
@@ -216,7 +216,7 @@ class NameAnonymousTokens_Visitor(SVisitor):
             tree.tail += self._rules_to_add
 
 
-class SimplifyGrammar_Visitor(SVisitor):
+class SimplifyGrammar_Visitor(SVisitor_Recurse):
     ANON_RULE_ID = 'anon'
 
     def __init__(self):
@@ -236,7 +236,7 @@ class SimplifyGrammar_Visitor(SVisitor):
     def _visit(self, tree):
         "_visit simplifies the tree as much as possible"
         # visit until nothing left to change (not the most efficient, but good enough since it's only the grammar)
-        while SVisitor._visit(self, tree):
+        while SVisitor_Recurse._visit(self, tree):
             pass
 
     def grammar(self, tree):

@@ -3,7 +3,8 @@ from __future__ import absolute_import
 from weakref import ref
 from copy import deepcopy
 
-from .utils import StringTypes, StringType, classify, _cache_0args
+from .utils import StringTypes, StringType, classify, _cache_0args, DefaultDictX
+
 
 class Str(StringType):
     # XXX Required to exclude 'parent'
@@ -212,6 +213,23 @@ def is_stree(obj):
 
 class SVisitor(object):
     def visit(self, tree):
+        open_queue = [tree]
+        queue = []
+
+        while open_queue:
+            node = open_queue.pop()
+            queue.append(node)
+            open_queue += filter(is_stree, node.tail)
+
+        for node in reversed(queue):
+            getattr(self, node.head, self.__default__)(node)
+
+    def __default__(self, tree):
+        pass
+
+class SVisitor_Recurse(object):
+
+    def visit(self, tree):
         self._visit(tree)
         return tree
 
@@ -228,7 +246,7 @@ class SVisitor(object):
         return f(tree)
 
     def __default__(self, tree):
-        return False
+        pass
 
 class STransformer(object):
     def transform(self, tree):

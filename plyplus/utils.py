@@ -29,3 +29,13 @@ def _cache_0args(obj):
             self._cache[_id] = obj(self)
         return _cache[_id]
     return memoizer
+
+class DefaultDictX(dict):
+    def __init__(self, default_factory):
+        self.__default_factory = default_factory
+    def __getitem__(self, key):
+        try:
+            return dict.__getitem__(self, key)
+        except KeyError:
+            self[key] = value = self.__default_factory(key)
+            return value
