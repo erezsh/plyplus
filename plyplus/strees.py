@@ -1,30 +1,9 @@
 from __future__ import absolute_import
 
-import functools
 from weakref import ref
 from copy import deepcopy
 
-from .utils import StringTypes, StringType
-
-def classify(seq, key=lambda x:x):
-    d = {}
-    for item in seq:
-        k = key(item)
-        if k not in d:
-            d[k] = [ ]
-        d[k].append( item )
-
-    return d
-
-def _cache_0args(obj):
-    @functools.wraps(obj)
-    def memoizer(self):
-        _cache = self._cache
-        _id = id(obj)
-        if _id not in _cache:
-            self._cache[_id] = obj(self)
-        return _cache[_id]
-    return memoizer
+from .utils import StringTypes, StringType, classify, _cache_0args
 
 class Str(StringType):
     pass
@@ -149,6 +128,14 @@ class STree(object):
                 kid.filter(func, context)
         return context
 
+    def reduce(self, func, initial=None):
+        return reduce(func, [kid.reduce(func, initial)
+                for kid in self.tail
+                if hasattr(kid, 'reduce')
+            ], initial)
+
+    def count(self):
+        return self.reduce(lambda x,y: x+1, 1)
 
     def _to_pydot(self, graph):
         import pydot
