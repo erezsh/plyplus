@@ -13,7 +13,7 @@ from ply import lex, yacc
 from . import grammar_parser
 from .utils import StringTypes, StringType
 
-from .strees import STree, SVisitor, STransformer, is_stree
+from .strees import STree, SVisitor, STransformer, is_stree, Str
 
 # -- Must!
 #TODO: Support States
@@ -399,7 +399,7 @@ class FilterTokens_Tranformer(STransformer):
             return tree
         return tree.__class__(tree.head, [x for x in tree.tail if is_stree(x)])
 
-class TokValue(StringType):
+class TokValue(Str):
     def __new__(cls, s, type=None, line=None, column=None, pos_in_stream=None, index=None):
         inst = StringType.__new__(cls, s)
         inst.type = type
@@ -413,6 +413,12 @@ class TokValue(StringType):
         if self.line and self.column:
             return repr("%s:%s|%s"%(self.line, self.column, self))
         return StringType.__repr__(self)
+
+    # XXX Required to exclude 'parent'
+    def __getstate__(self):
+        return str(self), self.type, self.line, self.column, self.pos_in_stream, self.index
+    def __setstate__(self, x):
+        _, self.type, self.line, self.column, self.pos_in_stream, self.index = x
 
 class LexerWrapper(object):
     def __init__(self, lexer, newline_tokens_names, newline_char='\n', ignore_token_names=()):

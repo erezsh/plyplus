@@ -6,7 +6,11 @@ from copy import deepcopy
 from .utils import StringTypes, StringType, classify, _cache_0args
 
 class Str(StringType):
-    pass
+    # XXX Required to exclude 'parent'
+    def __getstate__(self):
+        return str(self)
+    def __setstate__(self, x):
+        pass
 
 class STree(object):
     # __slots__ = 'head', 'tail', '_cache', 'parent', 'index_in_parent'
@@ -14,6 +18,7 @@ class STree(object):
     def __init__(self, head, tail, skip_adjustments=False):
         if skip_adjustments:
             self.head, self.tail = head, tail
+            self.clear_cache()
         else:
             self.reset(head, tail)
 
@@ -80,6 +85,11 @@ class STree(object):
     def __ne__(self, other):
         return not (self == other)
 
+    def __getstate__(self):
+        return self.head, self.tail
+    def __setstate__(self, data):
+        self.head, self.tail = data
+        self.clear_cache()
 
     def __deepcopy__(self, memo):
         return type(self)(self.head, deepcopy(self.tail, memo))
