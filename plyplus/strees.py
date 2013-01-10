@@ -112,12 +112,8 @@ class STree(object):
         return '%s(%s)' % (self.head, ', '.join(map(repr,self.tail)))
 
     def find_predicate(self, predicate):
-        l = []
-        if predicate(self):
-            l.append(self)
-        for kid in self.tail:
-            l += kid.find_predicate(predicate)
-        return l
+        "XXX Deprecated"
+        return self.filter(predicate)
 
     def map(self, func, context=None):
         if context is None:
