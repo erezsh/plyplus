@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-import re
+import re, copy
 from itertools import chain
 
 from .strees import STree, is_stree
@@ -112,9 +112,16 @@ class STreeSelector(STree):
         return [other] if other in set_ else []
 
     def _init_selector_list(self, other):
-        res = sum_list(kid._match(other) for kid in self.tail)
-        res = [r.get_result() for r in res]    # lose match objects, localize yields
-        self.reset('result_list', [set(res)])
+        if self.head == 'result_list':
+            res = sum_list(kid._match(other) for kid in self.selector_list.tail)
+            res = [r.get_result() for r in res]    # lose match objects, localize yields
+            self.tail[0] = set(res)
+            # self.tail = [set(res), self.tail[1]]
+        else:
+            res = sum_list(kid._match(other) for kid in self.tail)
+            res = [r.get_result() for r in res]    # lose match objects, localize yields
+            self.selector_list = copy.copy(self)
+            self.reset('result_list', [set(res)])
 
     def _travel_tree_by_op(self, tree, op):
         if not hasattr(tree, 'parent') or tree.parent is None:
@@ -181,7 +188,8 @@ class STreeSelector(STree):
         other.calc_parents()    # TODO add caching?
 
         # Evaluate all selector_lists into result_lists
-        selector_lists = self.filter(lambda x: is_stree(x) and x.head == 'selector_list')
+        selector_lists = self.filter(lambda x: is_stree(x)
+                                     and x.head in ('selector_list', 'result_list'))
         for selector_list in reversed(selector_lists):  # reverse turns pre-order -> post-order
             selector_list._init_selector_list(other)
 

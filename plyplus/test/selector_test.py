@@ -53,6 +53,12 @@ class TestSelectors(unittest.TestCase):
 
         assert len( selector('branch:is-parent + branch branch > name > /a/:is-leaf').match(tree2) ) == 1   # test all at once; only innermost 'a' matches
 
+    def test_lists_repeated_use(self):
+        assert self.tree1.select('name') == self.tree1.select('(name)')
+        assert self.tree1.select('branch') == self.tree1.select('(branch)')
+        assert self.tree2.select('name') == self.tree2.select('(name)')
+        assert self.tree2.select('branch') == self.tree2.select('(branch)')
+
     def test_lists(self):
         tree1, tree2 = self.tree1, self.tree2
         assert set( selector('(/a/)').match(tree1) ) == set('a')
