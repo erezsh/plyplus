@@ -202,7 +202,7 @@ selector_dict = {}
 selector_grammar = Grammar(grammars.open('selector.g'), tree_class=STreeSelector)
 def selector(text, *args, **kw):
     args = map(re.escape, args)
-    kw = dict((k, re.escape(v)) for k, v in kw.iteritems())
+    kw = dict((k, re.escape(v)) for k, v in kw.items())
     text = text.format(*args, **kw)
     if text not in selector_dict:
         selector_ast = selector_grammar.parse(text)
