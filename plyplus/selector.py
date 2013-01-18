@@ -199,7 +199,7 @@ class STreeSelector(STree):
 
 selector_dict = {}
 
-selector_grammar = Grammar(grammars.open('selector.g'))
+selector_grammar = Grammar(grammars.open('selector.g'), tree_class=STreeSelector)
 def selector(text, *args, **kw):
     args = map(re.escape, args)
     kw = dict((k, re.escape(v)) for k, v in kw.iteritems())

@@ -511,6 +511,7 @@ class _Grammar(object):
         self.just_lex = bool(options.pop('just_lex', False))
         self.ignore_postproc = bool(options.pop('ignore_postproc', False))
         self.auto_filter_tokens = bool(options.pop('auto_filter_tokens', True))
+        self.tree_class = options.pop('tree_class', STree)
         if options:
             raise TypeError("Unknown options: %s"%options.keys())
 
@@ -534,8 +535,6 @@ class _Grammar(object):
         tokendefs = SimplifyTokenDefs_Visitor().visit(grammar_tree)
         NameAnonymousTokens_Visitor(tokendefs).visit(grammar_tree)
         ply_grammar_and_code = ToPlyGrammar_Tranformer().transform(grammar_tree)
-
-        self.STree = STree
 
         # code may be omitted
         if len(ply_grammar_and_code) == 1:
@@ -698,9 +697,9 @@ class _Grammar(object):
             self.rules_to_flatten.append( rule_name )
 
         if RuleMods.EXPAND1 in mods or RuleMods.EXPAND in mods:  # EXPAND is here just for the speed-up
-            code = '\tp[0] = self.STree(%r, p[1:], skip_adjustments=True) if len(p)>2 else p[1]' % (rule_name,)
+            code = '\tp[0] = self.tree_class(%r, p[1:], skip_adjustments=True) if len(p)>2 else p[1]' % (rule_name,)
         else:
-            code = '\tp[0] = self.STree(%r, p[1:], skip_adjustments=True)' % (rule_name,)
+            code = '\tp[0] = self.tree_class(%r, p[1:], skip_adjustments=True)' % (rule_name,)
         s = ('def p_%s(self, p):\n\t%r\n%s\nx = p_%s\n'
             %(rule_name, rule_def, code, rule_name))
         d = {}
