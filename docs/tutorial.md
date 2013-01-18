@@ -23,27 +23,26 @@ The rule 'name' (as referred to by start), contains just one token. The token is
 
 Let's see the result of parsing with the grammar.
 
-    >>> list_parser.parse('cat,milk,dog')
-    start(name('cat'), _anon_1_star(name('milk'), name('dog')))
+    >>> r=list_parser.parse('cat,milk,dog')
+    >>> print r
+    start(name(u'1:1|cat'), name(u'1:5|milk'), name(u'1:10|dog'))
 
-The result is a STree instance, with a 'head' attribute of 'start' and a 'tail' attribute which is a list of nested STree instances.
+The result is a STree instance, with a 'head' attribute of 'start' and a 'tail' attribute which is a list of nested STree instances. The tokens themselves are instances of str (or unicode) that contain extra information such as the line and column of the token in the text.
 
-It's simple to understand, but what is \_anon\_1\_star? It's the name of the implicit rule we created with the asterisk in 'start'. We can tell plyplus to expand it (i.e. move its matches to its parent) by using the \* operator.
+( Note: It's possible to keep the commas as well ("punctuation tokens"), by instanciating Grammar with auto\_filter\_tokens=False )
 
-( Note: It's possible to get the commas as well ("punctuation tokens"), by instanciating Grammar with auto\_filter\_tokens=False )
+We can apply a simple list comprehension to get the list data:
 
-Let's apply change the operator and see the result:
-
-    >>> list_parser = Grammar(r"start: name (',' name)* ; name: '\w+' ;")
-    >>> list_parser.parse('cat,milk,dog')
-    start(name('cat'), name('milk'), name('dog'))
-
-That's cleaner! And now we can apply a simple list comprehension to get the list data:
-
-    >>> [x.tail[0] for x in _.tail]
+    >>> [str(x.tail[0]) for x in r.tail]
     ['cat', 'milk', 'dog']
 
-Well, that seems like a lot of overhead just to split a list, doesn't it? But the beauty of using grammars is in how easy it is to add a lot of complexity. Now that we know the basics, let's write a grammar that takes a string of nested python-ish lists and returns a flat list of all the numbers in it.
+Or we can use selectors:
+
+    >>> r.select('name>*')
+    [u'1:1|cat', u'1:5|milk', u'1:10|dog']
+
+
+That seems like a lot of overhead just to split a list, doesn't it? It is. But the beauty of using grammars is in how easy it is to add a lot of complexity. Now that we know the basics, let's write a grammar that takes a string of nested python-ish lists and returns a flat list of all the numbers in it.
 
     >>> list_parser = Grammar("""
             start: list ;                           // We only match a list
@@ -54,14 +53,14 @@ Well, that seems like a lot of overhead just to split a list, doesn't it? But th
             """)
 
     >>> res = list_parser.parse('[1, 2, [ [3,4], 5], [6,7   ] ]')
-    >>> [x.tail[0] for x in res.tail]
-    ['1', '2', '3', '4', '5', '6', '7']
+    >>> map(int, res.select('number>*'))
+    [1, 2, 3, 4, 5, 6, 7]
 
 This example contained some new elements, so here they are briefly:
 
 1. Prepending '@' to a rule name tells plyplus to always expand it. This is why the rules '@list' and '@item' do not appear in the output.
 
-2. Plyplus grammars support C++-like comments (not C's at the moment, though)
+2. Plyplus grammars support C++-like comments (// or /*..*/)
 
 3. 'SPACES' is the first token we defined explicitly. It matches a sequence of spaces, and the special token flag '%ignore' tells plyplus not to include it when parsing (adding 'WHITESPACE+' everywhere would make the grammar very cumbersome, and slower).
 
@@ -71,14 +70,20 @@ Finally, if we have pydot and graphviz installed, we can visualize the tree by t
 
 ![pydot visualization](/erezsh/plyplus/raw/master/list_parser_tree.png "pydot visualization")
 
-The last example (for now) shows Plyplus' error handling and forgiving nature (largely the effect of using PLY as its engine). Let's say we forgot to open the brackets in the former sample input:
+The last example (for now) shows Plyplus' error handling. Let's say we forgot to open the brackets in the former sample input:
 
-    >>> list_parser.parse('1, 2, [ [3,4], 5], [6,7   ]')
-    Syntax error in input at '1' (type _ANON_4) line 1 col 1
-    Syntax error in input at ',' (type _COMMA_0) line 1 col 18
-    start(number('6'), number('7'))
+    >>> list_parser.parse('[1, 2,[], [ [3,4], 5], [6,7   ]]')
+    Traceback (most recent call last):
+      File "<stdin>", line 1, in <module>
+      File "plyplus\plyplus.py", line 505, in parse
+        return self._grammar.parse(text)
+      File "plyplus\plyplus.py", line 584, in parse
+        raise ParseError('\n'.join(self.errors))
+    plyplus.plyplus.ParseError: Syntax error in input at ']' (type _ANON_1) line 1 col 8
+    Syntax error in input at ',' (type _ANON_3) line 1 col 22
+    Syntax error in input at ']' (type _ANON_1) line 1 col 32
+    Could not create parse tree!
 
-Plyplus yells that it didn't expect a '1' at this point. However, it keep on going. It get confused again at the 4th comma, but then pulls itself together and continues parsing the last list properly, returning 6 and 7.
-SIMP\_4 and SIMP\_0 are the automatic name given to the bracket tokens. Had we defined them explicitly we would get even better error messages.
+Plyplus does not let the error pass quietly, and raises an exception. However, internally it keeps on going as far as it can, and raises the exception with a list of errors.
 
 
