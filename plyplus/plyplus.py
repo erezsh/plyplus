@@ -415,9 +415,9 @@ class TokValue(Str):
 
     # XXX Required to exclude 'parent'
     def __getstate__(self):
-        return str(self), self.type, self.line, self.column, self.pos_in_stream, self.index
+        return self.type, self.line, self.column, self.pos_in_stream, self.index
     def __setstate__(self, x):
-        _, self.type, self.line, self.column, self.pos_in_stream, self.index = x
+        self.type, self.line, self.column, self.pos_in_stream, self.index = x
 
 class LexerWrapper(object):
     def __init__(self, lexer, newline_tokens_names, newline_char='\n', ignore_token_names=()):
@@ -550,7 +550,7 @@ class _Grammar(object):
             handler(name, defin)
 
         # -- Build lexer --
-        lexer = lex.lex(module=self)
+        lexer = lex.lex(module=self, reflags=re.UNICODE)
         lexer = LexerWrapper(lexer, newline_tokens_names=self._newline_tokens, newline_char=self._newline_value, ignore_token_names=self._ignore_tokens)
         if self.lexer_postproc and not self.ignore_postproc:
             lexer = self.lexer_postproc(lexer)  # apply wrapper
@@ -629,11 +629,32 @@ class _Grammar(object):
 
         return unless_toks_dict, unless_toks_regexps
 
+    def _unescape_unicode_in_token(self, token_value):
+        # XXX HACK XXX
+        # We want to convert unicode escapes into unicode characters,
+        # because the regexp engine only supports the latter.
+        # But decoding with unicode-escape converts whitespace as well,
+        # which is bad because our regexps are whitespace agnostic.
+        # It also unescapes double backslashes, which messes up with the
+        # regexp.
+        token_value = token_value.replace('\\'*2, '\\'*4)
+        # The equivalent whitespace escaping is:
+        # token_value = token_value.replace(r'\n', r'\\n')
+        # token_value = token_value.replace(r'\r', r'\\r')
+        # token_value = token_value.replace(r'\f', r'\\f')
+        # but for speed reasons, I ended-up with this ridiculus regexp:
+        token_value = re.sub(r'(\\[nrf])', r'\\\1', token_value)
+
+        return token_value.decode('unicode-escape')
+
     def _add_token_with_mods(self, name, defin):
         token_value, token_features = defin
+        token_value = self._unescape_unicode_in_token(token_value)
 
         token_added = False
-        if token_features.head == 'subgrammarobj':
+        if token_features is None:
+            pass    # skip to simply adding it
+        elif token_features.head == 'subgrammarobj':
             assert len(token_features.tail) == 1
             self.subgrammars[name] = token_features.tail[0]
         elif token_features.head == 'tokenmods':
@@ -677,12 +698,12 @@ class _Grammar(object):
             raise GrammarException("Unknown token feature: %s" % token_features.head)
 
         if not token_added:
-            self._add_token(name, token_value)
+            self.tokens.append(name)
+            setattr(self, 't_%s'%name, token_value)
 
     def _add_token(self, name, token_value):
         assert isinstance(token_value, StringTypes), token_value
-        self.tokens.append(name)
-        setattr(self, 't_%s'%name, token_value)
+        self._add_token_with_mods(name, (token_value, None))
 
     def _add_rule(self, rule_name, rule_def):
         mods, = re.match('([@#?]*).*', rule_name).groups()
