@@ -5,6 +5,7 @@ from ply import yacc
 from .strees import STree as S
 
 from .grammar_lexer import tokens, lexer
+from . import PLYPLUS_DIR
 
 DEBUG = False
 YACC_TAB_MODULE = "plyplus_grammar_parsetab"
@@ -123,7 +124,7 @@ def p_error(p):
 start = "extgrammar"
 
 
-_parser = yacc.yacc(debug=DEBUG, tabmodule=YACC_TAB_MODULE, errorlog=Exception)     # Return parser object
+_parser = yacc.yacc(debug=DEBUG, tabmodule=YACC_TAB_MODULE, errorlog=Exception, outputdir=PLYPLUS_DIR)     # Return parser object
 def parse(text, debug=False):
     lexer.lineno = 1
     return _parser.parse(text, lexer=lexer, debug=debug)
