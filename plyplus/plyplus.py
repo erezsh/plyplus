@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO)
 
 from ply import lex, yacc
 
-from . import grammar_parser
+from . import PLYPLUS_DIR, grammar_parser
 from .utils import StringTypes, StringType
 
 from .strees import STree, SVisitor, STransformer, is_stree, Str
@@ -67,7 +67,6 @@ from .strees import STree, SVisitor, STransformer, is_stree, Str
 #DONE: Multi-line comments
 #DONE: Better error handling (choose between prints and raising exception, setting threshold, etc.)
 #
-
 
 def get_token_name(token, default):
     return {
@@ -512,6 +511,7 @@ class _Grammar(object):
         self.ignore_postproc = bool(options.pop('ignore_postproc', False))
         self.auto_filter_tokens = bool(options.pop('auto_filter_tokens', True))
         self.tree_class = options.pop('tree_class', STree)
+
         if options:
             raise TypeError("Unknown options: %s"%options.keys())
 
@@ -558,7 +558,7 @@ class _Grammar(object):
 
         # -- Build Parser --
         if not self.just_lex:
-            self.parser = yacc.yacc(module=self, debug=self.debug, tabmodule=tab_filename, errorlog=self.logger)
+            self.parser = yacc.yacc(module=self, debug=self.debug, tabmodule=tab_filename, errorlog=self.logger, outputdir=PLYPLUS_DIR)
 
     def __repr__(self):
         return '<Grammar from %s, tab at %s>' % (self.source_name, self.tab_filename)
