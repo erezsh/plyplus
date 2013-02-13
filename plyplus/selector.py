@@ -85,7 +85,7 @@ class STreeSelector(STree):
         if is_stree(other):
             s = other.head
         else:
-            s = other   # hopefully string
+            s = unicode(other)   # hopefully string
         [regexp] = self.tail
         assert regexp[0] == regexp[-1] == '/'
         regexp = regexp[1:-1]

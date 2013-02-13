@@ -68,6 +68,7 @@ class STree(object):
 
     def remove_from_parent(self):
         self.parent().remove_kid_by_id(id(self))
+        self.parent = None
 
     def __len__(self):
         raise Exception('len')
