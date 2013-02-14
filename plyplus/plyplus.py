@@ -400,18 +400,13 @@ class FilterTokens_Tranformer(STransformer):
 
 class TokValue(Str):
     def __new__(cls, s, type=None, line=None, column=None, pos_in_stream=None, index=None):
-        inst = StringType.__new__(cls, s)
+        inst = Str.__new__(cls, s)
         inst.type = type
         inst.line = line
         inst.column = column
         inst.pos_in_stream = pos_in_stream
         inst.index = index
         return inst
-
-    def __repr__(self):
-        if self.line and self.column:
-            return repr("%s:%s|%s"%(self.line, self.column, self))
-        return StringType.__repr__(self)
 
     # XXX Required to exclude 'parent'
     def __getstate__(self):
