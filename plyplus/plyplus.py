@@ -6,7 +6,6 @@ import re, os
 import types
 import itertools
 import logging
-logging.basicConfig(level=logging.INFO)
 
 from ply import lex, yacc
 
