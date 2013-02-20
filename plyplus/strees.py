@@ -71,6 +71,10 @@ class STree(object):
         self.parent().remove_kid_by_id(id(self))
         self.parent = None
 
+    def expand_into_parent(self):
+        self.parent().expand_kids_by_index(self.index_in_parent)
+        self.parent = None
+
     def __len__(self):
         raise Exception('len')
     def __nonzero__(self):
