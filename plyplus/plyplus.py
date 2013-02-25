@@ -6,6 +6,7 @@ import re, os
 import types
 import itertools
 import logging
+import ast
 
 from ply import lex, yacc
 
@@ -595,7 +596,7 @@ class _Grammar(object):
     def _add_option(self, name, defin):
         "Set an option"
         if name == '%newline_char':
-            self._newline_value = eval(defin)   # XXX BAD BAD! I have TODO it differently
+            self._newline_value = ast.literal_eval(defin)   # XXX Safe enough?
         else:
             raise GrammarException( "Unknown option: %s " % name )
 
