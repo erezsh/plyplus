@@ -68,39 +68,41 @@ from .strees import STree, SVisitor, STransformer, is_stree, SVisitor_Recurse, S
 #DONE: Better error handling (choose between prints and raising exception, setting threshold, etc.)
 #
 
+_TOKEN_NAMES = {
+    ':' : 'COLON',
+    ',' : 'COMMA',
+    ';' : 'SEMICOLON',
+    '+' : 'PLUS',
+    '-' : 'MINUS',
+    '*' : 'STAR',
+    '/' : 'SLASH',
+    '|' : 'VBAR',
+    '!' : 'BANG',
+    '?' : 'QMARK',
+    '#' : 'HASH',
+    '$' : 'DOLLAR',
+    '&' : 'AMPERSAND',
+    '<' : 'LESSTHAN',
+    '>' : 'MORETHAN',
+    '=' : 'EQUAL',
+    '.' : 'DOT',
+    '%' : 'PERCENT',
+    '`' : 'BACKQUOTE',
+    '^' : 'CIRCUMFLEX',
+    '"' : 'DBLQUOTE',
+    '\'' : 'QUOTE',
+    '~' : 'TILDE',
+    '@' : 'AT',
+    '(' : 'LPAR',
+    ')' : 'RPAR',
+    '{' : 'LBRACE',
+    '}' : 'RBRACE',
+    '[' : 'LSQB',
+    ']' : 'RSQB',
+}
+
 def get_token_name(token, default):
-    return {
-        ':' : 'COLON',
-        ',' : 'COMMA',
-        ';' : 'SEMICOLON',
-        '+' : 'PLUS',
-        '-' : 'MINUS',
-        '*' : 'STAR',
-        '/' : 'SLASH',
-        '|' : 'VBAR',
-        '!' : 'BANG',
-        '?' : 'QMARK',
-        '#' : 'HASH',
-        '$' : 'DOLLAR',
-        '&' : 'AMPERSAND',
-        '<' : 'LESSTHAN',
-        '>' : 'MORETHAN',
-        '=' : 'EQUAL',
-        '.' : 'DOT',
-        '%' : 'PERCENT',
-        '`' : 'BACKQUOTE',
-        '^' : 'CIRCUMFLEX',
-        '"' : 'DBLQUOTE',
-        '\'' : 'QUOTE',
-        '~' : 'TILDE',
-        '@' : 'AT',
-        '(' : 'LPAR',
-        ')' : 'RPAR',
-        '{' : 'LBRACE',
-        '}' : 'RBRACE',
-        '[' : 'LSQB',
-        ']' : 'RSQB',
-    }.get( token, default)
+    return _TOKEN_NAMES.get( token, default)
 
 class PlyplusException(Exception): pass
 
@@ -178,7 +180,9 @@ class SimplifyTokenDefs_Visitor(SVisitor):
         if is_stree(token_value):
             assert token_value.head == 'tokenvalue'
 
-            regexp = ''.join( _unescape_token_def(d) if d.startswith("'") else self._simplify_token(self.tokendefs[d])
+            regexp = ''.join( _unescape_token_def(d)
+                                if d.startswith("'")
+                                else self._simplify_token(self.tokendefs[d])
                                 for d in token_value.tail )
             tokendef.tail = list(tokendef.tail) # can't assign to a tuple
             tokendef.tail[1] = regexp
@@ -611,7 +615,7 @@ class _Grammar(object):
 
             self._add_token(modtok_name, modtok_value)
 
-            if not re.search('[^\w/-]', modtok_value):   # definitely not a regexp, let's optimize it
+            if not re.search(r'[^\w/-]', modtok_value):   # definitely not a regexp, let's optimize it
                 unless_toks_dict[modtok_value] = modtok_name
             else:
                 if not modtok_value.startswith('^'):

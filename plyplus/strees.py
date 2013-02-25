@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from weakref import ref
 from copy import deepcopy
 
-from .utils import StringTypes, StringType, classify, _cache_0args, DefaultDictX
+from .utils import StringTypes, StringType, classify, _cache_0args
 
 
 class Str(StringType):

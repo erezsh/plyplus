@@ -1,3 +1,5 @@
+"""A friendly yet powerful LR-parser written in Python."""
+
 from __future__ import absolute_import
 
 import os

@@ -13,7 +13,7 @@ from .test_grammars import TestPythonG, TestConfigG
 
 logging.basicConfig(level=logging.INFO)
 
-CUR_PATH = os.path.split(__file__)[0]
+CUR_PATH = os.path.dirname(__file__)
 def _read(n, *args):
     with open(os.path.join(CUR_PATH, n), *args) as f:
         return f.read()
