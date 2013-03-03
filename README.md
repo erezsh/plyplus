@@ -38,19 +38,19 @@ A. Power and simplicity. See the examples and judge for yourself.
 
 ## Tutorials
 
-Learn how to write a grammar for Plyplus at the [tutorial](/erezsh/plyplus/blob/master/docs/tutorial.md)
+Learn how to write a grammar for Plyplus at the [tutorial](/docs/tutorial.md)
 
-Learn how to query the AST using [selectors](/erezsh/plyplus/blob/master/docs/selectors.md)
+Learn how to query the AST using [selectors](/docs/selectors.md)
 
 ## Examples
 
-This section contains examples of plyplus usage. For a better explanation, check out [the tutorial](/erezsh/plyplus/blob/master/docs/tutorial.md). If something is still not clear, feel free to email me and ask!
+This section contains examples of plyplus usage. For a better explanation, check out [the tutorial](/docs/tutorial.md). If something is still not clear, feel free to email me and ask!
 
 ### Parsing Python
 
 We'll use Plyplus' grammar for Python, and play with os.py for a bit (though it could be any Python file).
 
-For starters, let's do something simple: Let's list all of the functions (or methods) in the os module. We'll query the AST using [selectors](/erezsh/plyplus/blob/master/docs/selectors.md), so click the link if you want to be able to follow (or maybe an understanding of CSS/JQuery is enough?).
+For starters, let's do something simple: Let's list all of the functions (or methods) in the os module. We'll query the AST using [selectors](/docs/selectors.md), so click the link if you want to be able to follow (or maybe an understanding of CSS/JQuery is enough?).
 
     >>> import plyplus, plyplus.grammars
     >>> g = plyplus.Grammar(plyplus.grammars.open('python.g'))   # load python grammar
@@ -84,7 +84,7 @@ Hard to read? Try looking at it visually! (requires pydot)
 
     >>> _.to_png_with_pydot(r'calling_popen.png')
 
-[calling\_popen.png](/erezsh/plyplus/blob/master/docs/calling_popen.png)
+[calling\_popen.png](/docs/calling_popen.png)
 
 ### Parsing INI files
 
@@ -141,6 +141,6 @@ Plyplus uses the [MIT license](https://github.com/jquery/jquery/blob/master/MIT-
 
 I hope this readme inspired you to play with Plyplus a bit, and maybe even use it for your project.
 
-For more examples, check out the [test module](/erezsh/plyplus/blob/master/plyplus/test/plyplus_test.py)
+For more examples, check out the [test module](/test/plyplus_test.py)
 
 If you have any questions or ideas, please email me at erezshin+plyplus at gmail com

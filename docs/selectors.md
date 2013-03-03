@@ -33,11 +33,11 @@ One last thing worth noting: Selectors always return the last element. If you wa
 
 ## Some examples
 
-So how do we use them? Let's look at this Python expression from the [readme](/erezsh/plyplus/blob/master/README.md)
+So how do we use them? Let's look at this Python expression from the [readme](/README.md)
 
     funccall(attrget(name('subprocess'), name('Popen')), arglist(arg(name('cmd')), arg(name('shell'), funccall(name('isinstance'), arglist(arg(name('cmd')), arg(name('basestring'))))), arg(name('bufsize'), name('bufsize')), arg(name('stdin'), name('PIPE')), arg(name('stdout'), name('PIPE')), arg(name('close_fds'), name('True'))))
 
-It's a little messy, so you can use [this visualization](/erezsh/plyplus/blob/master/calling_popen.png) as reference.
+It's a little messy, so you can use [this visualization](/docs/calling_popen.png) as reference.
 
 Assuming it's stored in x, let's get all of the "name" heads:
 

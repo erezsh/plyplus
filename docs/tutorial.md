@@ -68,7 +68,7 @@ Finally, if we have pydot and graphviz installed, we can visualize the tree by t
 
     >>> res.to_png_with_pydot('list_parser_tree.png')
 
-![pydot visualization](/erezsh/plyplus/raw/master/list_parser_tree.png "pydot visualization")
+![pydot visualization](//raw.github.com/erezsh/plyplus/master/docs/list_parser_tree.png "pydot visualization")
 
 The last example (for now) shows Plyplus' error handling. Let's say we forgot to open the brackets in the former sample input:
 
