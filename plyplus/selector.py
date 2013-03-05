@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import re, copy
 from itertools import chain
+import weakref
 
 from .strees import STree, is_stree
 from .plyplus import Grammar
@@ -95,6 +96,8 @@ class STreeSelector(STree):
         return [other] if (is_stree(other) and other.tail) else []
     def match__modifier__is_leaf(self, other):
         return [other] if not is_stree(other) else []
+    def match__modifier__is_root(self, other):
+        return [other] if is_stree(other) and other == self.match_root() else []
 
     def match__elem_with_modifier(self, other):
         matches = self.tail[-2]._match(other)   # skip possible yield
@@ -139,7 +142,7 @@ class STreeSelector(STree):
                     yield x
             elif op == ' ': # travel back to root
                 parent = tree.parent()  # TODO: what happens if the parent is garbage-collected?
-                while parent is not None:
+                while parent is not None and parent != self.match_root():
                     yield parent
                     parent = parent.parent() if parent.parent else None
 
@@ -186,6 +189,7 @@ class STreeSelector(STree):
 
     def match(self, other):
         other.calc_parents()    # TODO add caching?
+        self.map(lambda x: is_stree(x) and setattr(x, 'match_root', weakref.ref(other)))
 
         # Evaluate all selector_lists into result_lists
         selector_lists = self.filter(lambda x: is_stree(x)

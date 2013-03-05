@@ -36,6 +36,12 @@ class TestSelectors(unittest.TestCase):
         assert len( selector('/[b]/:is-parent').match(self.tree1) ) == 5
         assert len( selector('/[b]/:is-parent').match(self.tree2) ) == 9
 
+        assert len( selector('*:is-root').match(self.tree1) ) == 1, selector('*:is-root').match(self.tree1)
+        assert len( selector('*:is-root').match(self.tree2) ) == 1
+        assert len( selector('a:is-root + b').match(self.tree2) ) == 0
+        assert len( selector('branch:is-root > branch').match(self.tree1.tail[0]) ) == 1
+        assert len( selector('start:is-root > branch').match(self.tree2) ) == 1
+
         # TODO: More modifiers!
 
     def test_operators(self):
