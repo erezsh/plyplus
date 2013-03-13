@@ -114,8 +114,26 @@ class STree(object):
             r = default
         return r
 
-    def __repr__(self):
-        return '%s(%s)' % (self.head, ', '.join(map(repr,self.tail)))
+    def calc_parents(self):
+        for i, kid in enumerate(self.tail):
+            if is_stree(kid):
+                kid.calc_parents()
+            kid.parent = ref(self)
+            kid.index_in_parent = i
+
+        if not hasattr(self, 'parent'):
+            self.parent = None
+            self.index_in_parent = None
+
+    def calc_depth(self, depth=0):
+        self.depth = depth
+        for kid in self.tail:
+            try:
+                kid.calc_depth(depth + 1)
+            except AttributeError:
+                pass
+
+    # == Functional operations (STree -> list) ==
 
     def find_predicate(self, predicate):
         "XXX Deprecated"
@@ -148,6 +166,37 @@ class STree(object):
 
     def count(self):
         return self.reduce(lambda x,y: x+1, 1)
+
+    # == Tree Navigation (assumes parent) ==
+
+    @property
+    def is_first_kid(self):
+        return self.index_in_parent == 0
+
+    @property
+    def is_last_kid(self):
+        return self.index_in_parent == len(self.parent().tail)-1
+
+    @property
+    def next_kid(self):
+        return self.parent().tail[self.index_in_parent + 1]
+
+    @property
+    def prev_kid(self):
+        new_index = self.index_in_parent - 1
+        if new_index < 0:
+            # We dont want it to overflow back to the last element
+            raise IndexError('First element in tail')
+        return self.parent().tail[new_index]
+
+    @property
+    def ancestors(self):
+        parent = self.parent()
+        while parent:
+            yield parent
+            parent = parent.parent() if parent.parent else None
+
+    # == Output Functions ==
 
     def _to_pydot(self, graph):
         import pydot
@@ -192,24 +241,9 @@ class STree(object):
         self._to_pydot(graph)
         graph.write_png(filename)
 
-    def calc_parents(self):
-        for i, kid in enumerate(self.tail):
-            if is_stree(kid):
-                kid.calc_parents()
-            kid.parent = ref(self)
-            kid.index_in_parent = i
+    def __repr__(self):
+        return '%s(%s)' % (self.head, ', '.join(map(repr,self.tail)))
 
-        if not hasattr(self, 'parent'):
-            self.parent = None
-            self.index_in_parent = None
-
-    def calc_depth(self, depth=0):
-        self.depth = depth
-        for kid in self.tail:
-            try:
-                kid.calc_depth(depth + 1)
-            except AttributeError:
-                pass
 
 
 def is_stree(obj):
