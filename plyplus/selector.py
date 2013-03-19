@@ -5,6 +5,7 @@ from itertools import chain
 import weakref
 
 from .strees import STree, is_stree
+from .stree_collection import STreeCollection
 from .plyplus import Grammar
 from . import grammars
 
@@ -200,7 +201,7 @@ class STreeSelector(STree):
             selector_list._init_selector_list(other)
 
         # Match and return results
-        return [x.get_result() for x in self._match(other)]
+        return STreeCollection([x.get_result() for x in self._match(other)])
 
 
 selector_dict = {}
@@ -223,5 +224,12 @@ def install():
         [r] = self.select(*args, **kw)
         return r
 
+    def collection_select(self, *args, **kw):
+        return STreeCollection(sum_list(stree.select(*args, **kw) for stree in self))
+
     STree.select = select
     STree.select1 = select1
+
+    STreeCollection.select = collection_select
+    STreeCollection.select1 = select1
+

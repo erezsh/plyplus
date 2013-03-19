@@ -85,5 +85,13 @@ class TestSelectors(unittest.TestCase):
         assert set( selector('=branch branch branch').match(tree1) ) == set([tree1.tail[0]])
         assert set( selector('=(name,=branch branch branch) /c/').match(tree1) ) == set([STree('name', ['c']), tree1.tail[0]])
 
+    def test_collection(self):
+        tree1, tree2 = self.tree1, self.tree2
+        assert tree1.select('name') == tree1.select('name').select('=name').select('(name)').select('=(name)').select('=(=name)')
+        assert tree1.select('name').select('/a|b/') == list(u'ab')
+        assert tree1.select('name').select('name /a|b/') == list(u'ab')
+        assert len( tree2.select('=branch>name>/a/').select('/^b$/') ) == 4
+
+
 if __name__ == '__main__':
     unittest.main()
