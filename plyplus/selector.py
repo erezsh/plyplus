@@ -97,7 +97,7 @@ class STreeSelector(STree):
     def match__modifier__is_leaf(self, other):
         return [other] if not is_stree(other) else []
     def match__modifier__is_root(self, other):
-        return [other] if is_stree(other) and other == self.match_root() else []
+        return [other] if is_stree(other) and other is self.match_root() else []
 
     def match__elem_with_modifier(self, other):
         matches = self.tail[-2]._match(other)   # skip possible yield
@@ -142,8 +142,10 @@ class STreeSelector(STree):
                     yield x
             elif op == ' ': # travel back to root
                 parent = tree.parent()  # TODO: what happens if the parent is garbage-collected?
-                while parent is not None and parent != self.match_root():
+                while parent is not None:
                     yield parent
+                    if parent is self.match_root():
+                        break
                     parent = parent.parent() if parent.parent else None
 
         except IndexError:
