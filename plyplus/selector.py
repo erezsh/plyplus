@@ -101,8 +101,8 @@ class STreeSelector(STree):
         return [other] if is_stree(other) and other is self.match_root() else []
 
     def match__elem_with_modifier(self, other):
-        matches = self.tail[-2]._match(other)   # skip possible yield
-        matches = filter(self.tail[-1].match__modifier, matches)
+        matches = self.tail[-1].match__modifier(other)   # skip possible yield
+        matches = filter(self.tail[-2]._match, matches)
         return [_Match(m, self) for m in matches]
 
     def match__elem_without_modifier(self, other):
