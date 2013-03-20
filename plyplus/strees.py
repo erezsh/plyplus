@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 from weakref import ref
 from copy import deepcopy
+from .stree_collection import STreeCollection
 
 from .utils import StringTypes, StringType, classify, _cache_0args
 
@@ -113,6 +114,9 @@ class STree(object):
                 raise
             r = default
         return r
+
+    def leaves(self, leaf_head):
+        return STreeCollection(x for x in self.tail if x.head == leaf_head)
 
     def calc_parents(self):
         for i, kid in enumerate(self.tail):
