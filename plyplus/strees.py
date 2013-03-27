@@ -116,7 +116,10 @@ class STree(object):
         return r
 
     def leaves(self, leaf_head):
-        return STreeCollection(x for x in self.tail if x.head == leaf_head)
+        return self.leaves_by_pred(lambda x: x.head == leaf_head)
+
+    def leaves_by_pred(self, pred):
+        return STreeCollection(filter(pred, self.tail))
 
     def calc_parents(self):
         for i, kid in enumerate(self.tail):
