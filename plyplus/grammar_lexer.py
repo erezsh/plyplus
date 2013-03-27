@@ -7,6 +7,8 @@ tokens = (
         'TOKEN',
         'OPTION',
         'OPER',
+        'PERM',
+        'PERMSEP',
         'OR',
         'LPAR',
         'RPAR',
@@ -24,6 +26,8 @@ t_TOKEN = '[A-Z_][A-Z_0-9]*'
 t_OPTION = '%[a-z_]+'
 
 t_OPER = '[?*+]'
+t_PERM = '\^'
+t_PERMSEP = '\^\^'
 t_OR = '\|'
 t_LPAR = '\('
 t_RPAR = '\)'

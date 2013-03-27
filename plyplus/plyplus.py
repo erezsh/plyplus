@@ -320,11 +320,62 @@ class SimplifyGrammar_Visitor(SVisitor_Recurse):
 
         return changed # Not changed
 
+    def perm_rule(self, tree):
+        """ Transforms a permutation rule into a rules_list of the permutations.
+            x : a ^ b ^ c
+             -->
+            x : a b c | a c b | b a c | b c a | c a b | c b a
+
+            It also handles operators on rules to be permuted.
+            x : a ^ b? ^ c
+             -->
+            x : a b c | a c b | b a c | b c a | c a b | c b a
+              | a c   | c a
+
+            x : a ^ ( b | c ) ^ d
+             -->
+            x : a b d | a d b | b a d | b d a | d a b | d b a
+              | a c d | a d c | c a d | c d a | d a c | d c a
+
+            You can also insert a separator rule between permutated rules.
+            x : a ^ b ^ c ^^ Z
+             -->
+            x : a Z b Z c | a Z c Z b | b Z a Z c
+              | b Z c Z a | c Z a Z b | c Z b Z a
+
+            x : a ^ b? ^ c ^^ Z
+             -->
+            x : a Z b Z c | a Z c Z b | b Z a Z c
+              | b Z c Z a | c Z a Z b | c Z b Z a
+              | a Z c     | c Z a
+        """
+        rules = tree.tail[0].tail
+        has_sep = len(tree.tail) == 2
+        sep = tree.tail[1] if has_sep else None
+        tail = []
+        for rule_perm in itertools.permutations(rules):
+            rule = STree('rule', rule_perm)
+            self._visit(rule)
+            tail.append(rule)
+        tree.head, tree.tail = 'rules_list', tail
+        self._visit(tree)
+        tree.tail = list(set(tree.tail))
+        if has_sep:
+            tail = []
+            for rule in tree.tail:
+                rule = [ i for i in itertools.chain.from_iterable([[sep,j]for j in rule.tail])][1:]
+                rule = STree('rule', rule)
+                self._visit(rule)
+                tail.append(rule)
+            tree.tail = tail
+        return True
+
     modtokenlist = _flatten
     tokenmods = _flatten
     tokenvalue = _flatten
     number_list = _flatten
     rules_list = _flatten
+    perm_phrase = _flatten
 
 
 
@@ -378,9 +429,10 @@ class ToPlyGrammar_Tranformer(STransformer):
 
 
 class SimplifySyntaxTree_Visitor(SVisitor):
-    def __init__(self, rules_to_flatten, rules_to_expand):
+    def __init__(self, rules_to_flatten, rules_to_expand, keep_empty_trees):
         self.rules_to_flatten = frozenset(rules_to_flatten)
         self.rules_to_expand = frozenset(rules_to_expand)
+        self.keep_empty_trees = bool(keep_empty_trees)
 
     def __default__(self, tree):
         # Expand/Flatten rules if requested in grammar
@@ -391,10 +443,11 @@ class SimplifySyntaxTree_Visitor(SVisitor):
         if to_expand:
             tree.expand_kids_by_index(*to_expand)
 
-        # Remove empty trees ( XXX not strictly necessary, just cleaner... should I keep them?)
-        to_remove = [i for i, subtree in enumerate(tree.tail) if is_stree(subtree) and not subtree.tail]
-        if to_remove:
-            tree.remove_kids_by_index(*to_remove)
+        # Remove empty trees if requested
+        if not self.keep_empty_trees:
+            to_remove = [i for i, subtree in enumerate(tree.tail) if is_stree(subtree) and not subtree.tail]
+            if to_remove:
+                tree.remove_kids_by_index(*to_remove)
 
 class FilterTokens_Tranformer(STransformer):
     def __default__(self, tree):
@@ -509,6 +562,7 @@ class _Grammar(object):
         self.just_lex = bool(options.pop('just_lex', False))
         self.ignore_postproc = bool(options.pop('ignore_postproc', False))
         self.auto_filter_tokens = bool(options.pop('auto_filter_tokens', True))
+        self.keep_empty_trees = bool(options.pop('keep_empty_trees', True))
         self.tree_class = options.pop('tree_class', STree)
 
         if options:
@@ -590,7 +644,7 @@ class _Grammar(object):
         if self.auto_filter_tokens:
             tree = FilterTokens_Tranformer().transform(tree)
 
-        SimplifySyntaxTree_Visitor(self.rules_to_flatten, self.rules_to_expand).visit(tree)
+        SimplifySyntaxTree_Visitor(self.rules_to_flatten, self.rules_to_expand, self.keep_empty_trees).visit(tree)
 
         return tree
 
