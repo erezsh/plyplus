@@ -378,9 +378,10 @@ class ToPlyGrammar_Tranformer(STransformer):
 
 
 class SimplifySyntaxTree_Visitor(SVisitor):
-    def __init__(self, rules_to_flatten, rules_to_expand):
+    def __init__(self, rules_to_flatten, rules_to_expand, keep_empty_trees):
         self.rules_to_flatten = frozenset(rules_to_flatten)
         self.rules_to_expand = frozenset(rules_to_expand)
+        self.keep_empty_trees = bool(keep_empty_trees)
 
     def __default__(self, tree):
         # Expand/Flatten rules if requested in grammar
@@ -391,10 +392,11 @@ class SimplifySyntaxTree_Visitor(SVisitor):
         if to_expand:
             tree.expand_kids_by_index(*to_expand)
 
-        # Remove empty trees ( XXX not strictly necessary, just cleaner... should I keep them?)
-        to_remove = [i for i, subtree in enumerate(tree.tail) if is_stree(subtree) and not subtree.tail]
-        if to_remove:
-            tree.remove_kids_by_index(*to_remove)
+        # Remove empty trees if requested
+        if not self.keep_empty_trees:
+            to_remove = [i for i, subtree in enumerate(tree.tail) if is_stree(subtree) and not subtree.tail]
+            if to_remove:
+                tree.remove_kids_by_index(*to_remove)
 
 class FilterTokens_Tranformer(STransformer):
     def __default__(self, tree):
@@ -509,6 +511,7 @@ class _Grammar(object):
         self.just_lex = bool(options.pop('just_lex', False))
         self.ignore_postproc = bool(options.pop('ignore_postproc', False))
         self.auto_filter_tokens = bool(options.pop('auto_filter_tokens', True))
+        self.keep_empty_trees = bool(options.pop('keep_empty_trees', True))
         self.tree_class = options.pop('tree_class', STree)
 
         if options:
@@ -590,7 +593,7 @@ class _Grammar(object):
         if self.auto_filter_tokens:
             tree = FilterTokens_Tranformer().transform(tree)
 
-        SimplifySyntaxTree_Visitor(self.rules_to_flatten, self.rules_to_expand).visit(tree)
+        SimplifySyntaxTree_Visitor(self.rules_to_flatten, self.rules_to_expand, self.keep_empty_trees).visit(tree)
 
         return tree
 
