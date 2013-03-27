@@ -92,6 +92,35 @@ class TestSelectors(unittest.TestCase):
         assert tree1.select('name').select('name /a|b/') == list(u'ab')
         assert len( tree2.select('=branch>name>/a/').select('/^b$/') ) == 4
 
+    def test_tree_param(self):
+        tree1, tree2 = self.tree1, self.tree2
+        name_ast = STree('name', ['a'])
+
+        # Sanity test
+        assert name_ast.select('{name}', name=name_ast) == [name_ast]
+
+        # Test that all params are required
+        with self.assertRaises(KeyError):
+            name_ast.select('{name}')
+
+        # Make sure it plays nicely with values and arguments that don't exist
+        assert not name_ast.select('{name}', name='A', another='B')
+
+        # Test select1, and more "advanced" features with a param
+        assert tree1.select1('=branch =(={name})', name=name_ast) == (tree1.tail[0], name_ast)
+
+    def test_regexp_param(self):
+        tree1, tree2 = self.tree1, self.tree2
+
+        # Sanity test
+        assert tree1.select('/{value}/', value='a') == ['a']
+
+        # Test combination with other regexp element
+        assert tree1.select('/^{value}/', value='a') == ['a']
+
+        # Test regexp encoding, selector re-use
+        assert not tree1.select('/{value}/', value='^a')
+
 
 if __name__ == '__main__':
     unittest.main()

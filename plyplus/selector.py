@@ -88,10 +88,14 @@ class STreeSelector(STree):
             s = other.head
         else:
             s = unicode(other)   # hopefully string
-        [regexp] = self.tail
+        regexp = self.tail[1]
         assert regexp[0] == regexp[-1] == '/'
         regexp = regexp[1:-1]
         return [other] if re.match(regexp, s) else []
+
+    def match__elem_tree_param(self, other):
+        assert self.head == 'elem_tree', 'Missing keyword: %s' % self
+        return [other] if self.tail[1] == other else []
 
     def match__modifier__is_parent(self, other):
         return [other] if (is_stree(other) and other.tail) else []
@@ -189,9 +193,21 @@ class STreeSelector(STree):
     # def _match(self, other):
     #     return getattr(self, 'match__' + self.head)(other)
 
-    def match(self, other):
+    def match(self, other, **kwargs):
         other.calc_parents()    # TODO add caching?
         self.map(lambda x: is_stree(x) and setattr(x, 'match_root', weakref.ref(other)))
+
+        # Selectors are re-usable right now, so we have to handle both first
+        # use, and re-use. This will be bad if ever used threaded. The right
+        # thing to do (if we want to keep caching them) is to deepcopy on each
+        # use. It should also make the code simpler.
+        for elem_tree_param in self.filter(lambda x: is_stree(x)
+                                          and x.head in ('elem_tree_param', 'elem_tree')):
+            elem_tree_param.reset('elem_tree', [elem_tree_param.tail[0], kwargs[elem_tree_param.tail[0]]])
+
+        str_args = dict((k,re.escape(v)) for k,v in kwargs.items() if isinstance(v, (str, unicode)))
+        for elem_regexp in self.filter(lambda x: is_stree(x) and x.head == 'elem_regexp'):
+            elem_regexp.tail = [elem_regexp.tail[0], elem_regexp.tail[0].format(**str_args)]
 
         # Evaluate all selector_lists into result_lists
         selector_lists = self.filter(lambda x: is_stree(x)
@@ -206,10 +222,7 @@ class STreeSelector(STree):
 selector_dict = {}
 
 selector_grammar = Grammar(grammars.open('selector.g'), tree_class=STreeSelector)
-def selector(text, *args, **kw):
-    args = map(re.escape, args)
-    kw = dict((k, re.escape(v)) for k, v in kw.items())
-    text = text.format(*args, **kw)
+def selector(text):
     if text not in selector_dict:
         selector_ast = selector_grammar.parse(text)
         selector_ast.map(lambda x: is_stree(x) and x._post_init())
@@ -217,10 +230,10 @@ def selector(text, *args, **kw):
     return selector_dict[text]
 
 def install():
-    def select(self, *args, **kw):
-        return selector(*args, **kw).match(self)
-    def select1(self, *args, **kw):
-        [r] = self.select(*args, **kw)
+    def select(self, text, **kw):
+        return selector(text).match(self, **kw)
+    def select1(self, text, **kw):
+        [r] = self.select(text, **kw)
         return r
 
     def collection_select(self, *args, **kw):
