@@ -103,6 +103,8 @@ class STreeSelector(STree):
         return [other] if not is_stree(other) else []
     def match__modifier__is_root(self, other):
         return [other] if is_stree(other) and other is self.match_root() else []
+    def match__modifier__is_first_child(self, other):
+        return [other] if other.index_in_parent == 0 else []
 
     def match__elem_with_modifier(self, other):
         matches = self.tail[-1].match__modifier(other)   # skip possible yield
