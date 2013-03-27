@@ -320,11 +320,62 @@ class SimplifyGrammar_Visitor(SVisitor_Recurse):
 
         return changed # Not changed
 
+    def perm_rule(self, tree):
+        """ Transforms a permutation rule into a rules_list of the permutations.
+            x : a ^ b ^ c
+             -->
+            x : a b c | a c b | b a c | b c a | c a b | c b a
+
+            It also handles operators on rules to be permuted.
+            x : a ^ b? ^ c
+             -->
+            x : a b c | a c b | b a c | b c a | c a b | c b a
+              | a c   | c a
+
+            x : a ^ ( b | c ) ^ d
+             -->
+            x : a b d | a d b | b a d | b d a | d a b | d b a
+              | a c d | a d c | c a d | c d a | d a c | d c a
+
+            You can also insert a separator rule between permutated rules.
+            x : a ^ b ^ c ^^ Z
+             -->
+            x : a Z b Z c | a Z c Z b | b Z a Z c
+              | b Z c Z a | c Z a Z b | c Z b Z a
+
+            x : a ^ b? ^ c ^^ Z
+             -->
+            x : a Z b Z c | a Z c Z b | b Z a Z c
+              | b Z c Z a | c Z a Z b | c Z b Z a
+              | a Z c     | c Z a
+        """
+        rules = tree.tail[0].tail
+        has_sep = len(tree.tail) == 2
+        sep = tree.tail[1] if has_sep else None
+        tail = []
+        for rule_perm in itertools.permutations(rules):
+            rule = STree('rule', rule_perm)
+            self._visit(rule)
+            tail.append(rule)
+        tree.head, tree.tail = 'rules_list', tail
+        self._visit(tree)
+        tree.tail = list(set(tree.tail))
+        if has_sep:
+            tail = []
+            for rule in tree.tail:
+                rule = [ i for i in itertools.chain.from_iterable([[sep,j]for j in rule.tail])][1:]
+                rule = STree('rule', rule)
+                self._visit(rule)
+                tail.append(rule)
+            tree.tail = tail
+        return True
+
     modtokenlist = _flatten
     tokenmods = _flatten
     tokenvalue = _flatten
     number_list = _flatten
     rules_list = _flatten
+    perm_phrase = _flatten
 
 
 

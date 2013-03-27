@@ -86,9 +86,29 @@ def p_optiondef(p):
         p[0] = S('optiondef', (p[1], p[3]))
 
 def p_rules_list(p):
-    """rules_list   : rule
-                    | rule OR rules_list"""
+    """rules_list   : production
+                    | production OR rules_list"""
     p[0] = S('rules_list', [p[1]] + p[3:])
+
+def p_production(p):
+    """production : perm_rule
+                  | rule
+    """
+    p[0] = p[1]
+
+def p_perm_rule(p):
+    """perm_rule : perm_phrase
+                 | perm_phrase PERMSEP rule"""
+    if len(p) == 2:
+        p[0] = S('perm_rule', (p[1],))
+    else:
+        p[0] = S('perm_rule', (p[1], p[3]))
+
+def p_perm_phrase(p):
+    """perm_phrase : rule PERM rule
+                   | rule PERM perm_phrase
+    """
+    p[0] = S('perm_phrase', [p[1]] + p[3:])
 
 def p_rule(p):
     """rule : expr
