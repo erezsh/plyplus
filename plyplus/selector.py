@@ -119,13 +119,12 @@ class STreeSelector(STree):
         if self.head == 'result_list':
             res = sum_list(kid._match(other) for kid in self.selector_list.tail)
             res = [r.get_result() for r in res]    # lose match objects, localize yields
-            self.tail[0] = set(res)
-            # self.tail = [set(res), self.tail[1]]
+            self.tail = [frozenset(res)] + self.tail[1:]
         else:
             res = sum_list(kid._match(other) for kid in self.tail)
             res = [r.get_result() for r in res]    # lose match objects, localize yields
             self.selector_list = copy.copy(self)
-            self.reset('result_list', [set(res)])
+            self.reset('result_list', [frozenset(res)])
 
     def _travel_tree_by_op(self, tree, op):
         if not hasattr(tree, 'parent') or tree.parent is None:
