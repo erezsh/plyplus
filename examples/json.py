@@ -1,19 +1,19 @@
 from plyplus import Grammar, STransformer
 
-json_grammar = Grammar("""
+json_grammar = Grammar(r"""
 @start: value ;
 
 ?value : object | array | string | number | boolean | null ;
 
-string : '"([^"\\\\/\\b\\f\\n\\r\\t]|([\\\\]")|([\\\\][\\\\])|([\\\\]/)|([\\\\]b)|([\\\\]f)|([\\\\]n)|([\\\\]r)|([\\\\]t))*"' ;
-number : '-?(([0-9])|([1-9][0-9]*))(\.[0-9]+)?([eE][+-]?[0-9]+)?' ;
+string : '".*?(?<!\\)(\\\\)*?"' ;
+number : '-?([1-9]\d*|\d)(\.\d+)?([eE][+-]?\d+)?' ;
 pair : string ':' value ;
 object : '\{' ( pair ( ',' pair )* )? '\}' ;
 array : '\[' ( value ( ',' value ) * )? '\]' ;
 boolean : 'true' | 'false' ;
 null : 'null' ;
 
-WS: '[ \t\n]+' (%ignore) ;
+WS: '[ \t\n]+' (%ignore) (%newline);
 """)
 
 class JSON_Transformer(STransformer):
