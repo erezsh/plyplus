@@ -310,6 +310,10 @@ class STransformer(object):
         new_tree = tree.__class__(tree.head, branches)
         if hasattr(tree, 'depth'):
             new_tree.depth = tree.depth # XXX ugly hack, need a general solution for meta-data (meta attribute?)
+        if hasattr(tree, 'parent'):
+            # XXX ugly hack, need a general solution for meta-data (meta attribute?)
+            new_tree.parent = tree.parent
+            new_tree.index_in_parent = tree.index_in_parent
 
         f = getattr(self, new_tree.head, self.__default__)
         return f(new_tree)
