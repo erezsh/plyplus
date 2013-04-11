@@ -105,7 +105,7 @@ class STree(object):
     @_cache_0args
     def named_tail(self):
         "Warning: Assumes 'tail' doesn't change"
-        return classify(self.tail, lambda e: e.head)
+        return classify(self.tail, lambda e: is_stree(e) and e.head)
     def leaf(self, leaf_head, default=KeyError):
         try:
             [r] = self.named_tail[leaf_head]
