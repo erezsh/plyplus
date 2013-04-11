@@ -298,6 +298,10 @@ class STransformer(object):
         return self._transform(tree)
 
     def _transform(self, tree):
+        pre_f = getattr(self, 'pre_' + tree.head, None)
+        if pre_f:
+            return pre_f(tree)
+
         branches = [
                 self._transform(branch) if is_stree(branch) else branch
                 for branch in tree.tail
