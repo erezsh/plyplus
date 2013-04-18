@@ -36,6 +36,11 @@ Q. So what is Plyplus' first priority?
 
 A. Power and simplicity. See the examples and judge for yourself.
 
+Q. I want to use Plyplus in a threaded application. Is it thread safe?
+
+A. Yes, but you must pay attention. Plyplus relies on PLY, it can cause problems if you try to define multiple parsers at the same time using threads. Please make sure not to do that.
+
+
 ## Tutorials
 
 Learn how to write a grammar for Plyplus at the [tutorial](/docs/tutorial.md)
