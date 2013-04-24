@@ -172,7 +172,7 @@ class STree(object):
             ], initial)
 
     def count(self):
-        return self.reduce(lambda x,y: x+1, 1)
+        return self.reduce(lambda x,y: x+y, 1)
 
     # == Tree Navigation (assumes parent) ==
 
