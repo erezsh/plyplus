@@ -10,7 +10,7 @@ from .utils import StringTypes, StringType, classify, _cache_0args
 class Str(StringType):
     # XXX Required to exclude 'parent'
     def __getstate__(self):
-        return str(self)
+        return StringType(self)
     def __setstate__(self, x):
         pass
 
