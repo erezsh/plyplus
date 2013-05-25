@@ -12,10 +12,10 @@ try:
 except OSError:
     pass
 
-from .plyplus import Grammar, SVisitor, STransformer, is_stree
+from .plyplus import Grammar, Visitor, Transformer
 
 from .plyplus import PlyplusException, GrammarException, TokenizeError, ParseError
 
-from . import selector
-selector.install()
+#from . import selector
+#selector.install()
 

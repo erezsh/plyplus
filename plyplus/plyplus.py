@@ -13,7 +13,9 @@ from ply import lex, yacc
 from . import PLYPLUS_DIR, grammar_parser
 from .utils import StringTypes, StringType
 
-from .strees import STree, SVisitor, STransformer, is_stree, SVisitor_Recurse, Str
+#from .strees import SVisitor, STransformer, is_stree, SVisitor_Recurse, Str
+from .treepy import Tree, Visitor, Transformer, Visitor_Recurse, is_stree
+Str = str
 
 # -- Must!
 #TODO: Support States
@@ -118,7 +120,7 @@ class RuleMods(object):
     EXPAND1 = '?'   # Expand all instances of rule with only one child
 
 
-class ExtractSubgrammars_Visitor(SVisitor):
+class ExtractSubgrammars_Visitor(Visitor):
     def __init__(self, parent_source_name, parent_tab_filename, parent_options):
         self.parent_source_name = parent_source_name
         self.parent_tab_filename = parent_tab_filename
@@ -127,48 +129,48 @@ class ExtractSubgrammars_Visitor(SVisitor):
         self.last_tok = None
 
     def tokendef(self, tok):
-        self.last_tok = tok.tail[0]
+        self.last_tok = tok.children[0]
     def subgrammar(self, tree):
         assert self.last_tok
-        assert len(tree.tail) == 1
+        assert len(tree.children) == 1
         source_name = '%s:%s' % (self.parent_source_name, self.last_tok.lower())
         tab_filename = '%s_%s' % (self.parent_tab_filename, self.last_tok.lower())
-        subgrammar = _Grammar(tree.tail[0], source_name, tab_filename, **self.parent_options)
-        tree.head, tree.tail = 'subgrammarobj', [subgrammar]
+        subgrammar = _Grammar(tree.children[0], source_name, tab_filename, **self.parent_options)
+        tree.data, tree.children = 'subgrammarobj', [subgrammar]
 
-class ApplySubgrammars_Visitor(SVisitor):
+class ApplySubgrammars_Visitor(Visitor):
     def __init__(self, subgrammars):
         self.subgrammars = subgrammars
     def __default__(self, tree):
-        for i, tok in enumerate(tree.tail):
+        for i, tok in enumerate(tree.children):
             if type(tok) == TokValue and tok.type in self.subgrammars:
                 parsed_tok = self.subgrammars[tok.type].parse(tok)
-                assert parsed_tok.head == 'start'
-                tree.tail[i] = parsed_tok
+                assert parsed_tok.data == 'start'
+                tree.children[i] = parsed_tok
 
 
-class CollectTokenDefs_Visitor(SVisitor):
+class CollectTokenDefs_Visitor(Visitor):
     def __init__(self, dict_to_populate):
         self.tokendefs = dict_to_populate
 
     def tokendef(self, tree):
-        self.tokendefs[ tree.tail[0] ] = tree
+        self.tokendefs[ tree.children[0].data ] = tree
 
     def fragmentdef(self, tree):
-        self.tokendefs[ tree.tail[0] ] = tree
+        self.tokendefs[ tree.children[0].data ] = tree
 
 def _unescape_token_def(token_def):
     assert token_def[0] == "'" == token_def[-1]
     return token_def[1:-1].replace(r"\'", "'")
 
-class SimplifyTokenDefs_Visitor(SVisitor):
+class SimplifyTokenDefs_Visitor(Visitor):
 
     def __init__(self):
         self.tokendefs = {}
 
     def visit(self, tree):
         CollectTokenDefs_Visitor(self.tokendefs).visit(tree)
-        SVisitor.visit(self, tree)
+        Visitor.visit(self, tree)
 
         for tokendef in self.tokendefs.values():
             self._simplify_token(tokendef)
@@ -176,20 +178,20 @@ class SimplifyTokenDefs_Visitor(SVisitor):
         return self.tokendefs
 
     def _simplify_token(self, tokendef):
-        token_value = tokendef.tail[1]
+        token_value = tokendef.children[1]
         if is_stree(token_value):
-            assert token_value.head == 'tokenvalue'
+            assert token_value.data == 'tokenvalue'
 
-            regexp = ''.join( _unescape_token_def(d)
-                                if d.startswith("'")
-                                else self._simplify_token(self.tokendefs[d])
-                                for d in token_value.tail )
-            tokendef.tail = list(tokendef.tail) # can't assign to a tuple
-            tokendef.tail[1] = regexp
+            regexp = ''.join( _unescape_token_def(d.data)
+                                if d.data.startswith("'")
+                                else self._simplify_token(self.tokendefs[d.data])
+                                for d in token_value.children )
+            tokendef.children = list(tokendef.children) # can't assign to a tuple
+            tokendef.children[1] = regexp
 
-        return tokendef.tail[1]
+        return tokendef.children[1]
 
-class NameAnonymousTokens_Visitor(SVisitor):
+class NameAnonymousTokens_Visitor(Visitor):
     ANON_TOKEN_ID = 'ANON'
 
     def __init__(self, tokendefs):
@@ -198,13 +200,13 @@ class NameAnonymousTokens_Visitor(SVisitor):
 
         self.token_name_from_value = {}
         for name, tokendef in tokendefs.items():
-            self.token_name_from_value[tokendef.tail[1]] = name
+            self.token_name_from_value[tokendef.children[1]] = name
 
     def _get_new_tok_name(self, tok):
         return '_%s_%d' % (get_token_name(tok[1:-1], self.ANON_TOKEN_ID), next(self._count))
 
     def rule(self, tree):
-        for i, child in enumerate(tree.tail):
+        for i, child in enumerate(tree.children):
             if isinstance(child, StringTypes) and child.startswith("'"):
                 child = _unescape_token_def(child)
                 try:
@@ -212,15 +214,15 @@ class NameAnonymousTokens_Visitor(SVisitor):
                 except KeyError:
                     tok_name = self._get_new_tok_name(child) # Add anonymous token
                     self.token_name_from_value[child] = tok_name    # for future anonymous occurences
-                    self._rules_to_add.append(STree('tokendef', [tok_name, child]))
-                tree.tail[i] = tok_name
+                    self._rules_to_add.append(Tree('tokendef', [tok_name, child]))
+                tree.children[i] = tok_name
 
     def grammar(self, tree):
         if self._rules_to_add:
-            tree.tail += self._rules_to_add
+            tree.children += self._rules_to_add
 
 
-class SimplifyGrammar_Visitor(SVisitor_Recurse):
+class SimplifyGrammar_Visitor(Visitor_Recurse):
     ANON_RULE_ID = 'anon'
 
     def __init__(self):
@@ -232,7 +234,7 @@ class SimplifyGrammar_Visitor(SVisitor_Recurse):
 
     @staticmethod
     def _flatten(tree):
-        to_expand = [i for i, subtree in enumerate(tree.tail) if is_stree(subtree) and subtree.head == tree.head]
+        to_expand = [i for i, subtree in enumerate(tree.children) if is_stree(subtree) and subtree.data == tree.data]
         if to_expand:
             tree.expand_kids_by_index(*to_expand)
         return bool(to_expand)
@@ -240,7 +242,7 @@ class SimplifyGrammar_Visitor(SVisitor_Recurse):
     def _visit(self, tree):
         "_visit simplifies the tree as much as possible"
         # visit until nothing left to change (not the most efficient, but good enough since it's only the grammar)
-        while SVisitor_Recurse._visit(self, tree):
+        while Visitor_Recurse._visit(self, tree):
             pass
 
     def grammar(self, tree):
@@ -248,17 +250,18 @@ class SimplifyGrammar_Visitor(SVisitor_Recurse):
 
         if self._rules_to_add:
             changed = True
-            tree.tail += self._rules_to_add
+            tree.children += self._rules_to_add
             self._rules_to_add = []
         return changed
 
     def _add_recurse_rule(self, mod, name, repeated_expr):
-        new_rule = STree('ruledef', [mod+name, STree('rules_list', [STree('rule', [repeated_expr]), STree('rule', [name, repeated_expr])]) ])
+        new_rule = Tree('ruledef', [mod+name, Tree('rules_list', [Tree('rule', [repeated_expr]), Tree('rule', [name, repeated_expr])]) ])
         self._rules_to_add.append(new_rule)
         return new_rule
 
     def oper(self, tree):
-        rule_operand, operator = tree.tail
+        rule_operand, operator_node = tree.children
+        operator = operator_node.data
 
         if operator == '*':
             # a : b c* d;
@@ -270,7 +273,7 @@ class SimplifyGrammar_Visitor(SVisitor_Recurse):
             # _c : _c c | c;
             new_name = self._get_new_rule_name() + '_star'
             self._add_recurse_rule(RuleMods.EXPAND, new_name, rule_operand)
-            tree.head, tree.tail = 'rules_list', [STree('rule', [new_name]), STree('rule', [])]
+            tree.data, tree.children = 'rules_list', [Tree('rule', [new_name]), Tree('rule', [])]
         elif operator == '+':
             # a : b c+ d;
             #  -->
@@ -278,9 +281,9 @@ class SimplifyGrammar_Visitor(SVisitor_Recurse):
             # _c : _c c | c;
             new_name = self._get_new_rule_name() + '_plus'
             self._add_recurse_rule(RuleMods.EXPAND, new_name, rule_operand)
-            tree.head, tree.tail = 'rule', [new_name]
+            tree.data, tree.children = 'rule', [new_name]
         elif operator == '?':
-            tree.head, tree.tail = 'rules_list', [rule_operand, STree('rule', [])]
+            tree.data, tree.children = 'rules_list', [rule_operand, Tree('rule', [])]
         else:
             assert False, rule_operand
 
@@ -303,19 +306,19 @@ class SimplifyGrammar_Visitor(SVisitor_Recurse):
         if self._flatten(tree):
             changed = True
 
-        for i, child in enumerate(tree.tail):
-            if is_stree(child) and child.head == 'rules_list':
+        for i, child in enumerate(tree.children):
+            if is_stree(child) and child.data == 'rules_list':
                 # found. now flatten
                 new_rules_list = []
-                for option in child.tail:
-                    new_rules_list.append(STree('rule', []))
+                for option in child.children:
+                    new_rules_list.append(Tree('rule', []))
                     # for each rule in rules_list
-                    for j, child2 in enumerate(tree.tail):
+                    for j, child2 in enumerate(tree.children):
                         if j == i:
-                            new_rules_list[-1].tail.append(option)
+                            new_rules_list[-1].children.append(option)
                         else:
-                            new_rules_list[-1].tail.append(child2)
-                tree.head, tree.tail = 'rules_list', new_rules_list
+                            new_rules_list[-1].children.append(child2)
+                tree.data, tree.children = 'rules_list', new_rules_list
                 return True # changed
 
         return changed # Not changed
@@ -349,25 +352,25 @@ class SimplifyGrammar_Visitor(SVisitor_Recurse):
               | b Z c Z a | c Z a Z b | c Z b Z a
               | a Z c     | c Z a
         """
-        rules = tree.tail[0].tail
-        has_sep = len(tree.tail) == 2
-        sep = tree.tail[1] if has_sep else None
-        tail = []
+        rules = tree.children[0].children
+        has_sep = len(tree.children) == 2
+        sep = tree.children[1] if has_sep else None
+        children = []
         for rule_perm in itertools.permutations(rules):
-            rule = STree('rule', rule_perm)
+            rule = Tree('rule', rule_perm)
             self._visit(rule)
-            tail.append(rule)
-        tree.head, tree.tail = 'rules_list', tail
+            children.append(rule)
+        tree.data, tree.children = 'rules_list', children
         self._visit(tree)
-        tree.tail = list(set(tree.tail))
+        tree.children = list(set(tree.children))
         if has_sep:
-            tail = []
-            for rule in tree.tail:
-                rule = [ i for i in itertools.chain.from_iterable([[sep,j]for j in rule.tail])][1:]
-                rule = STree('rule', rule)
+            children = []
+            for rule in tree.children:
+                rule = [ i for i in itertools.chain.from_iterable([[sep,j]for j in rule.children])][1:]
+                rule = Tree('rule', rule)
                 self._visit(rule)
-                tail.append(rule)
-            tree.tail = tail
+                children.append(rule)
+            tree.children = children
         return True
 
     modtokenlist = _flatten
@@ -379,56 +382,56 @@ class SimplifyGrammar_Visitor(SVisitor_Recurse):
 
 
 
-class ToPlyGrammar_Tranformer(STransformer):
+class ToPlyGrammar_Tranformer(Transformer):
     """Transforms grammar into ply-compliant grammar
     This is only a partial transformation that should be post-processd in order to apply
     XXX Probably a bad class name
     """
     @staticmethod
     def rules_list(tree):
-        return '\n\t| '.join(tree.tail)
+        return '\n\t| '.join(x.data for x in tree.children)
 
     @staticmethod
     def rule(tree):
-        return ' '.join(tree.tail)
+        return ' '.join(x.data for x in tree.children)
 
     @staticmethod
     def extrule(tree):
-        return ' '.join(tree.tail)
+        return ' '.join(x.data for x in tree.children)
 
     @staticmethod
     def oper(tree):
-        return '(%s)%s' % (' '.join(tree.tail[:-1]), tree.tail[-1])
+        return '(%s)%s' % (' '.join(tree.children[:-1]), tree.children[-1])
 
     @staticmethod
     def ruledef(tree):
-        return STree('rule', (tree.tail[0], '%s\t: %s'%(tree.tail[0], tree.tail[1])))
+        return Tree('rule', (tree.children[0], '%s\t: %s'%(tree.children[0].data, tree.children[1].data)))
 
     @staticmethod
     def optiondef(tree):
-        return STree('option', tree.tail)
+        return Tree('option', tree.children)
 
     @staticmethod
     def fragmentdef(tree):
-        return STree('fragment', [None, None])
+        return Tree('fragment', [None, None])
 
     @staticmethod
     def tokendef(tree):
-        if len(tree.tail) > 2:
-            return STree('token_with_mods', [tree.tail[0], tree.tail[1:]])
+        if len(tree.children) > 2:
+            return Tree('token_with_mods', [tree.children[0], Tree('payload', tree.children[1:])])
         else:
-            return STree('token', tree.tail)
+            return Tree('token', tree.children)
 
     @staticmethod
     def grammar(tree):
-        return tree.tail
+        return tree
 
     @staticmethod
     def extgrammar(tree):
-        return tree.tail
+        return tree
 
 
-class SimplifySyntaxTree_Visitor(SVisitor):
+class SimplifySyntaxTree_Visitor(Visitor):
     def __init__(self, rules_to_flatten, rules_to_expand, keep_empty_trees):
         self.rules_to_flatten = frozenset(rules_to_flatten)
         self.rules_to_expand = frozenset(rules_to_expand)
@@ -436,24 +439,24 @@ class SimplifySyntaxTree_Visitor(SVisitor):
 
     def __default__(self, tree):
         # Expand/Flatten rules if requested in grammar
-        to_expand = [i for i, subtree in enumerate(tree.tail) if is_stree(subtree) and (
-                        (subtree.head == tree.head and subtree.head in self.rules_to_flatten)
-                        or (subtree.head in self.rules_to_expand)
+        to_expand = [i for i, subtree in enumerate(tree.children) if is_stree(subtree) and (
+                        (subtree.data == tree.data and subtree.data in self.rules_to_flatten)
+                        or (subtree.data in self.rules_to_expand)
                     ) ]
         if to_expand:
             tree.expand_kids_by_index(*to_expand)
 
         # Remove empty trees if requested
         if not self.keep_empty_trees:
-            to_remove = [i for i, subtree in enumerate(tree.tail) if is_stree(subtree) and not subtree.tail]
+            to_remove = [i for i, subtree in enumerate(tree.children) if is_stree(subtree) and not subtree.children]
             if to_remove:
                 tree.remove_kids_by_index(*to_remove)
 
-class FilterTokens_Tranformer(STransformer):
+class FilterTokens_Tranformer(Transformer):
     def __default__(self, tree):
-        if len(tree.tail) <= 1:
+        if len(tree.children) <= 1:
             return tree
-        return tree.__class__(tree.head, [x for x in tree.tail if is_stree(x)])
+        return tree.__class__(tree.data, [x for x in tree.children if is_stree(x)])
 
 class TokValue(Str):
     def __new__(cls, s, type=None, line=None, column=None, pos_in_stream=None, index=None):
@@ -563,7 +566,7 @@ class _Grammar(object):
         self.ignore_postproc = bool(options.pop('ignore_postproc', False))
         self.auto_filter_tokens = bool(options.pop('auto_filter_tokens', True))
         self.keep_empty_trees = bool(options.pop('keep_empty_trees', True))
-        self.tree_class = options.pop('tree_class', STree)
+        self.tree_class = options.pop('tree_class', Tree)
 
         if options:
             raise TypeError("Unknown options: %s"%options.keys())
@@ -588,6 +591,7 @@ class _Grammar(object):
         tokendefs = SimplifyTokenDefs_Visitor().visit(grammar_tree)
         NameAnonymousTokens_Visitor(tokendefs).visit(grammar_tree)
         ply_grammar_and_code = ToPlyGrammar_Tranformer().transform(grammar_tree)
+        ply_grammar_and_code = ply_grammar_and_code.children
 
         # code may be omitted
         if len(ply_grammar_and_code) == 1:
@@ -596,8 +600,10 @@ class _Grammar(object):
             ply_grammar, code = ply_grammar_and_code
             exec(code, locals())
 
-        for x in ply_grammar:
-            type_, (name, defin) = x.head, x.tail
+        print ply_grammar.pretty()
+
+        for x in ply_grammar.children:
+            type_, (name, defin) = x.data, x.children
             assert type_ in ('token', 'token_with_mods', 'rule', 'option', 'fragment'), "Can't handle type %s"%type_
             handler = getattr(self, '_add_%s' % type_)
             handler(name, defin)
@@ -662,10 +668,9 @@ class _Grammar(object):
     def _extract_unless_tokens(self, modtokenlist):
         unless_toks_dict = {}
         unless_toks_regexps = []
-        for modtoken in modtokenlist.tail:
-            assert modtoken.head == 'token'
-            modtok_name, modtok_value = modtoken.tail
-
+        for modtoken in modtokenlist.children:
+            assert modtoken.data == 'token'
+            modtok_name, modtok_value = modtoken.children
 
             self._add_token(modtok_name, modtok_value)
 
@@ -701,18 +706,30 @@ class _Grammar(object):
         return token_value.decode('unicode-escape')
 
     def _add_token_with_mods(self, name, defin):
-        token_value, token_features = defin
+        name = name.data
+        if not isinstance(defin, tuple):    # XXX
+            assert defin.data == 'payload'  # XXX
+            token_value, token_features = defin.children
+            assert len(token_value.children) == 1
+            assert len(token_features.children) == 1
+            token_value = token_value.children[0].data
+            #token_features = token_features.children[0]
+        else:
+            token_value, token_features = defin
+            token_value = token_value.data
         token_value = self._unescape_unicode_in_token(token_value)
 
         token_added = False
         if token_features is None:
             pass    # skip to simply adding it
-        elif token_features.head == 'subgrammarobj':
-            assert len(token_features.tail) == 1
-            self.subgrammars[name] = token_features.tail[0]
-        elif token_features.head == 'tokenmods':
-            for token_mod in token_features.tail:
-                mod, modtokenlist = token_mod.tail
+        elif token_features.data == 'subgrammarobj':
+            assert len(token_features.children) == 1
+            self.subgrammars[name] = token_features.children[0]
+        elif token_features.data == 'tokenmods':
+            for token_mod in token_features.children:
+                mod, modtokenlist = token_mod.children
+                assert not len(mod.children)    # XXX
+                mod = mod.data
 
                 if mod == '%unless':
                     assert not token_added, "token already added, can't issue %unless"
@@ -730,6 +747,8 @@ class _Grammar(object):
                     s = ('def t_%s(self, t):\n\t%s\n%s\nx = t_%s\n'
                         %(name, repr(token_value), code, name))
                     d = {}
+                    #print s
+                    #print '==='
                     exec(s, d)
 
                     setattr(self, 't_%s'%name, d['x'].__get__(self))
@@ -739,29 +758,32 @@ class _Grammar(object):
                     token_added = True
 
                 elif mod == '%newline':
-                    assert len(modtokenlist.tail) == 0
+                    assert len(modtokenlist.children) == 0
                     self._newline_tokens.add(name)
 
                 elif mod == '%ignore':
-                    assert len(modtokenlist.tail) == 0
+                    assert len(modtokenlist.children) == 0
                     self._ignore_tokens.add(name)
                 else:
-                    raise GrammarException("Unknown token modifier: %s" % mod)
+                    raise GrammarException("Unknown token modifier: %r" % mod)
         else:
-            raise GrammarException("Unknown token feature: %s" % token_features.head)
+            raise GrammarException("Unknown token feature: %s" % token_features.data)
 
         if not token_added:
             self.tokens.append(name)
             setattr(self, 't_%s'%name, token_value)
 
     def _add_token(self, name, token_value):
-        assert isinstance(token_value, StringTypes), token_value
+        #assert isinstance(token_value, StringTypes), token_value
         self._add_token_with_mods(name, (token_value, None))
 
     def _add_rule(self, rule_name, rule_def):
+        rule_name = rule_name.data
+        rule_def = rule_def.data
+
         mods, = re.match('([@#?]*).*', rule_name).groups()
         if mods:
-            assert rule_def[:len(mods)] == mods
+            assert rule_def[:len(mods)] == mods, (rule_def, mods)
             rule_def = rule_def[len(mods):]
             rule_name = rule_name[len(mods):]
 
@@ -777,6 +799,8 @@ class _Grammar(object):
         s = ('def p_%s(self, p):\n\t%r\n%s\nx = p_%s\n'
             %(rule_name, rule_def, code, rule_name))
         d = {}
+        #print s
+        #print '----'
         exec(s, d)
         setattr(self, 'p_%s'%rule_name, types.MethodType(d['x'], self))
 
@@ -792,7 +816,7 @@ class _Grammar(object):
             else:
                 msg = "Syntax error in input at '%s' (type %s) line %s" % (p.value, p.type, p.lineno)
         else:
-            msg = "Syntax error in input (details unknown): %s" % p
+            msg = "Syntax error in input (dechildrens unknown): %s" % p
 
         if self.debug:
             print(msg)
