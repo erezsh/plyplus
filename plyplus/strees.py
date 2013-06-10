@@ -258,6 +258,8 @@ def is_stree(obj):
 
 class SVisitor(object):
     def visit(self, tree):
+        assert tree
+
         open_queue = [tree]
         queue = []
 

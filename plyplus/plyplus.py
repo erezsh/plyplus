@@ -449,11 +449,10 @@ class SimplifySyntaxTree_Visitor(SVisitor):
             if to_remove:
                 tree.remove_kids_by_index(*to_remove)
 
-class FilterTokens_Tranformer(STransformer):
+class FilterTokens_Visitor(SVisitor):
     def __default__(self, tree):
-        if len(tree.tail) <= 1:
-            return tree
-        return tree.__class__(tree.head, [x for x in tree.tail if is_stree(x)])
+        if len(tree.tail) > 1:
+            tree.tail = filter(is_stree, tree.tail)
 
 class TokValue(Str):
     def __new__(cls, s, type=None, line=None, column=None, pos_in_stream=None, index=None):
@@ -642,7 +641,7 @@ class _Grammar(object):
 
         # Apply auto-filtering (remove 'punctuation' tokens)
         if self.auto_filter_tokens:
-            tree = FilterTokens_Tranformer().transform(tree)
+            FilterTokens_Visitor().visit(tree)
 
         SimplifySyntaxTree_Visitor(self.rules_to_flatten, self.rules_to_expand, self.keep_empty_trees).visit(tree)
 
