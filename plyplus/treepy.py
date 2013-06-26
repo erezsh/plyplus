@@ -40,6 +40,15 @@ class NodeInterface(object):
     def __repr__(self):
         return '%s(%s, %s)' % (type(self).__name__, self.data, self.children)
 
+    def __eq__(self, other):
+        return self.data == other.data and self.children == other.children
+    def __ne__(self, other):
+        return not (self.data == other.data)
+    def __repr__(self):
+        return '%s(%s, %s)' % (type(self).__name__, self.data, list(self.children))
+    def __str__(self):
+        return '%s%s' % (self.data, list(self.children))
+
 
 class Node(NodeInterface):
     def __init__(self, root, path, raw_node):
@@ -49,13 +58,14 @@ class Node(NodeInterface):
         self.root = root
         self.path = path
         self.raw_node = raw_node
-        self.children = Children(self)
+        self._children = Children(self)
 
     def become_node_of(self, tree):     # XXX remove!!!
         return self
 
-    def __str__(self):
-        raise NotImplementedError()     # XXX
+    @property
+    def children(self):
+        return self._children
 
 class ChildrenInterface(object):
     def get_raw_node(self, path):
@@ -93,6 +103,8 @@ class Children(ChildrenInterface):
         return self
     def __len__(self):
         return len(self.raw_nodes)
+    def __nonzero__(self):
+        return len(self)
     def __getitem__(self, path):
         if isinstance(path, slice):     # TODO make better
             return [Node(self.node.root, 'TODO', x) for x in self.raw_nodes[path]]
@@ -121,6 +133,9 @@ class Children(ChildrenInterface):
 
     __iadd__ = extend
 
+    def __eq__(self, other):
+        return all(t1==t2 for t1, t2 in zip(self, other))
+
 
 class RawNodes(ChildrenInterface):
     pass
@@ -139,7 +154,7 @@ class DictNodes(RawNodes):
 
 class Tree(NodeInterface):
     def __init__(self, data, nodes=()):
-        assert isinstance(data, (str, unicode)), data     # XXX remove!!
+        #assert isinstance(data, (str, unicode)), data     # XXX remove!!
 
         if isinstance(nodes, (list, tuple, ChildrenInterface)):
             self.raw_node = [data, []]
@@ -179,7 +194,11 @@ class Visitor(object):
             open_queue += filter(is_stree, node.children)
 
         for node in reversed(queue):
-            getattr(self, node.data, self.__default__)(node)
+            if node.children:
+                try:
+                    getattr(self, node.data, self.__default__)(node)
+                except TypeError:
+                    self.__default__(node)
 
     def __default__(self, tree):
         pass
@@ -191,38 +210,58 @@ class Visitor_Recurse(object):
         return tree
 
     def _visit(self, tree):
-        pre_f = getattr(self, 'pre_' + tree.data, None)
-        if pre_f:
-            pre_f(tree)
+        if not tree.children:
+            return
+
+        try:
+            pre_f = getattr(self, u'pre_' + tree.data, None)
+        except TypeError:
+            pass
+        else:
+            if pre_f:
+                pre_f(tree)
 
         for branch in tree.children:
             if is_stree(branch):
                 self._visit(branch)
 
-        f = getattr(self, tree.data, self.__default__)
+        try:
+            f = getattr(self, tree.data, self.__default__)
+        except TypeError:
+            f = self.__default__
         return f(tree)
 
     def __default__(self, tree):
         pass
 
 class Transformer(object):
-    def transform(self, tree):
+    def transform2(self, tree):
         return self._transform(tree)
 
     def _transform(self, tree):
-        pre_f = getattr(self, 'pre_' + tree.data, None)
-        if pre_f:
-            return pre_f(tree)
+        if not tree.children:
+            return tree
+
+        try:
+            pre_f = getattr(self, u'pre_' + tree.data, None)
+        except (TypeError, UnicodeEncodeError):
+            pass
+        else:
+            if pre_f:
+                return pre_f(tree)
 
         branches = [
                 self._transform(branch) if is_stree(branch) else branch
                 for branch in tree.children
             ]
 
-        assert isinstance(tree.data, (str, unicode))    # XXX remove!
+        #assert isinstance(tree.data, (str, unicode))    # XXX remove!
         new_tree = Tree(tree.data, branches)
 
+        #try:
         f = getattr(self, new_tree.data, self.__default__)
+        #except (TypeError, UnicodeEncodeError):
+        #    f = self.__default__
         return f(new_tree)
 
     def __default__(self, tree):

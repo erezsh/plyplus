@@ -27,12 +27,17 @@ for i in range(11):
 """
 
 class TestPlyPlus(unittest.TestCase):
+    def test_very_basic1(self):
+        g = Grammar("start: A B; B: 'b'; A: 'a';")
+        r = g.parse('ab')
+        print r
+
     def test_basic1(self):
         g = Grammar("start: a+ b a+? 'b' a*; b: 'b'; a: 'a';")
         r = g.parse('aaabaab')
-        self.assertEqual( ''.join(x.head for x in r.tail), 'aaabaa' )
+        self.assertEqual( ''.join(x.data for x in r.children), 'aaabaa' )
         r = g.parse('aaabaaba')
-        self.assertEqual( ''.join(x.head for x in r.tail), 'aaabaaa' )
+        self.assertEqual( ''.join(x.data for x in r.children), 'aaabaaa' )
 
         self.assertRaises(ParseError, g.parse, 'aaabaa')
 
@@ -41,9 +46,9 @@ class TestPlyPlus(unittest.TestCase):
         g = Grammar("start: B A ; B: '12'; A: '1'; ", auto_filter_tokens=False)
         g2 = Grammar("start: B A; B: '12'; A: '2'; ", auto_filter_tokens=False)
         x = g.parse('121')
-        assert x.head == 'start' and x.tail == ['12', '1'], x
+        assert x.data == 'start' and [n.data for n in x.children] == ['12', '1'], x
         x = g2.parse('122')
-        assert x.head == 'start' and x.tail == ['12', '2'], x
+        assert x.data == 'start' and [n.data for n in x.children] == ['12', '2'], x
 
     def test_basic3(self):
         g = Grammar("start: '\(' name_list (COMMA MUL NAME)? '\)'; @name_list: NAME | name_list COMMA NAME ;  MUL: '\*'; COMMA: ','; NAME: '\w+'; ")
