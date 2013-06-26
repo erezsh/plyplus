@@ -106,10 +106,15 @@ class Children(ChildrenInterface):
             return
 
         assert isinstance(tree, Tree)
-        p_rest, p_last = _rslice_path(path)
+
         new_node = tree.become_node_of(self.node.root).raw_node
         assert isinstance(new_node, list)
-        self.get_raw_node(p_rest)[_NODES][p_last] = new_node
+        if isinstance(path, int):
+            self.raw_nodes[path] = new_node
+        else:
+            p_rest, p_last = _rslice_path(path)
+            self.get_raw_node(p_rest)[_NODES][p_last] = new_node
+
     def __delitem__(self, path):
         p_rest, p_last = _rslice_path(path)
         del self.get_raw_node(p_rest)[_NODES][p_last]
@@ -143,13 +148,17 @@ class Tree(NodeInterface):
         else:
             raise TypeError("Type %r not supported for nodes" % nodes)
 
-        self.children = Children(self)
+        self._children = Children(self)
 
         for n in nodes:
             if isinstance(n, (Node,Tree)):  # XXX just tree
                 self.children.append(n)
             else:
                 self.children.append(Tree(n))
+
+    @property
+    def children(self):
+        return self._children
 
     @property
     def root(self):

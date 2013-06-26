@@ -186,10 +186,10 @@ class SimplifyTokenDefs_Visitor(Visitor):
                                 if d.data.startswith("'")
                                 else self._simplify_token(self.tokendefs[d.data])
                                 for d in token_value.children )
-            tokendef.children = list(tokendef.children) # can't assign to a tuple
-            tokendef.children[1] = regexp
-
-        return tokendef.children[1]
+            print '###', regexp
+            #tokendef.children = list(tokendef.children) # can't assign to a tuple
+            #tokendef.children[1] = regexp
+            tokendef.children[1] = Tree(regexp)
 
 class NameAnonymousTokens_Visitor(Visitor):
     ANON_TOKEN_ID = 'ANON'
@@ -318,7 +318,7 @@ class SimplifyGrammar_Visitor(Visitor_Recurse):
                             new_rules_list[-1].children.append(option)
                         else:
                             new_rules_list[-1].children.append(child2)
-                tree.data, tree.children = 'rules_list', new_rules_list
+                tree.data, tree.children[:] = 'rules_list', new_rules_list
                 return True # changed
 
         return changed # Not changed
@@ -362,7 +362,7 @@ class SimplifyGrammar_Visitor(Visitor_Recurse):
             children.append(rule)
         tree.data, tree.children = 'rules_list', children
         self._visit(tree)
-        tree.children = list(set(tree.children))
+        tree.children[:] = list(set(tree.children))
         if has_sep:
             children = []
             for rule in tree.children:
@@ -793,9 +793,9 @@ class _Grammar(object):
             self.rules_to_flatten.append( rule_name )
 
         if RuleMods.EXPAND1 in mods or RuleMods.EXPAND in mods:  # EXPAND is here just for the speed-up
-            code = '\tp[0] = self.tree_class(%r, p[1:], skip_adjustments=True) if len(p)>2 else p[1]' % (rule_name,)
+            code = '\tp[0] = self.tree_class(%r, p[1:]) if len(p)>2 else p[1]' % (rule_name,)
         else:
-            code = '\tp[0] = self.tree_class(%r, p[1:], skip_adjustments=True)' % (rule_name,)
+            code = '\tp[0] = self.tree_class(%r, p[1:])' % (rule_name,)
         s = ('def p_%s(self, p):\n\t%r\n%s\nx = p_%s\n'
             %(rule_name, rule_def, code, rule_name))
         d = {}
