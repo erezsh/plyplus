@@ -27,7 +27,7 @@ class NodeInterface(object):
     def _get_data(self):
         return self.raw_node[_DATA]
     def _set_data(self, data):
-        assert isinstance(data, (str, unicode))     # XXX remove!!
+        #assert isinstance(data, (str, unicode))     # XXX remove!!
         self.raw_node[_DATA] = data
     data = property(_get_data, _set_data, doc="Data of node")
 
@@ -191,14 +191,11 @@ class Visitor(object):
         while open_queue:
             node = open_queue.pop()
             queue.append(node)
-            open_queue += filter(is_stree, node.children)
+            open_queue += [x for x in node.children if x.children]
 
         for node in reversed(queue):
             if node.children:
-                try:
-                    getattr(self, node.data, self.__default__)(node)
-                except TypeError:
-                    self.__default__(node)
+                getattr(self, node.data, self.__default__)(node)
 
     def __default__(self, tree):
         pass
@@ -213,22 +210,16 @@ class Visitor_Recurse(object):
         if not tree.children:
             return
 
-        try:
-            pre_f = getattr(self, u'pre_' + tree.data, None)
-        except TypeError:
-            pass
-        else:
-            if pre_f:
-                pre_f(tree)
+        pre_f = getattr(self, u'pre_' + tree.data, None)
+        if pre_f:
+            pre_f(tree)
 
         for branch in tree.children:
-            if is_stree(branch):
+            if branch.children:
                 self._visit(branch)
 
-        try:
-            f = getattr(self, tree.data, self.__default__)
-        except TypeError:
-            f = self.__default__
+        f = getattr(self, tree.data, self.__default__)
+        f = self.__default__
         return f(tree)
 
     def __default__(self, tree):
@@ -242,30 +233,21 @@ class Transformer(object):
         if not tree.children:
             return tree
 
-        try:
-            pre_f = getattr(self, u'pre_' + tree.data, None)
-        except (TypeError, UnicodeEncodeError):
-            pass
-        else:
-            if pre_f:
-                return pre_f(tree)
+        pre_f = getattr(self, u'pre_' + tree.data, None)
+        if pre_f:
+            return pre_f(tree)
 
         branches = [
-                self._transform(branch) if is_stree(branch) else branch
+                self._transform(branch) if branch.children else branch
                 for branch in tree.children
             ]
 
         #assert isinstance(tree.data, (str, unicode))    # XXX remove!
         new_tree = Tree(tree.data, branches)
 
-        #try:
         f = getattr(self, new_tree.data, self.__default__)
-        #except (TypeError, UnicodeEncodeError):
-        #    f = self.__default__
         return f(new_tree)
 
     def __default__(self, tree):
         return tree
 
-def is_stree(obj):    # TODO remove!!!
-    return type(obj) is Tree or isinstance(obj, (Node, Tree))

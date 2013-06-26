@@ -14,7 +14,7 @@ from . import PLYPLUS_DIR, grammar_parser
 from .utils import StringTypes, StringType
 
 #from .strees import SVisitor, STransformer, is_stree, SVisitor_Recurse, Str
-from .treepy import Tree, Visitor, Transformer, Visitor_Recurse, is_stree
+from .treepy import Tree, Visitor, Transformer, Visitor_Recurse
 
 class Str(StringType):
     # XXX Required to exclude 'parent'
@@ -192,8 +192,6 @@ class SimplifyTokenDefs_Visitor(Visitor):
                                 if d.data.startswith("'")
                                 else self._simplify_token(self.tokendefs[d.data])
                                 for d in token_value.children )
-            #tokendef.children = list(tokendef.children) # can't assign to a tuple
-            #tokendef.children[1] = regexp
             tokendef.children[1] = Tree(regexp)
         return tokendef.children[1].data
 
@@ -240,7 +238,7 @@ class SimplifyGrammar_Visitor(Visitor_Recurse):
 
     @staticmethod
     def _flatten(tree):
-        to_expand = [i for i, subtree in enumerate(tree.children) if is_stree(subtree) and subtree.data == tree.data]
+        to_expand = [i for i, subtree in enumerate(tree.children) if subtree.data == tree.data]
         if to_expand:
             tree.expand_kids_by_index(*to_expand)
         return bool(to_expand)
@@ -313,7 +311,7 @@ class SimplifyGrammar_Visitor(Visitor_Recurse):
             changed = True
 
         for i, child in enumerate(tree.children):
-            if is_stree(child) and child.data == 'rules_list':
+            if child.data == 'rules_list':
                 # found. now flatten
                 new_rules_list = []
                 for option in child.children:
@@ -445,7 +443,7 @@ class SimplifySyntaxTree_Visitor(Visitor):
 
     def __default__(self, tree):
         # Expand/Flatten rules if requested in grammar
-        to_expand = [i for i, subtree in enumerate(tree.children) if is_stree(subtree) and (
+        to_expand = [i for i, subtree in enumerate(tree.children) if (
                         (subtree.data == tree.data and subtree.data in self.rules_to_flatten)
                         or (subtree.data in self.rules_to_expand)
                     ) ]
@@ -454,15 +452,14 @@ class SimplifySyntaxTree_Visitor(Visitor):
 
         # Remove empty trees if requested
         if not self.keep_empty_trees:
-            to_remove = [i for i, subtree in enumerate(tree.children) if is_stree(subtree) and not subtree.children]
+            to_remove = [i for i, subtree in enumerate(tree.children) if not subtree.children]
             if to_remove:
                 tree.remove_kids_by_index(*to_remove)
 
-class FilterTokens_Tranformer(Transformer):
+class FilterTokens_Visitor(Visitor):
     def __default__(self, tree):
-        if len(tree.children) <= 1:
-            return tree
-        return tree.__class__(tree.data, [x for x in tree.children if len(x.children)])
+        if len(tree.children) > 1:
+            tree.children[:] = [x for x in tree.children if len(x.children)]
 
 class TokValue(Str):
     def __new__(cls, s, type=None, line=None, column=None, pos_in_stream=None, index=None):
@@ -604,10 +601,8 @@ class _Grammar(object):
             ply_grammar, = ply_grammar_and_code
         else:
             ply_grammar, code = ply_grammar_and_code
-            #print "Exec:", type(code), code
             exec(code.data, locals())
 
-        #print ply_grammar.pretty()
 
         for x in ply_grammar.children:
             type_, (name, defin) = x.data, x.children
@@ -655,7 +650,7 @@ class _Grammar(object):
 
         # Apply auto-filtering (remove 'punctuation' tokens)
         if self.auto_filter_tokens:
-            tree = FilterTokens_Tranformer().transform2(tree)
+            FilterTokens_Visitor().visit(tree)
 
         SimplifySyntaxTree_Visitor(self.rules_to_flatten, self.rules_to_expand, self.keep_empty_trees).visit(tree)
 
@@ -762,7 +757,6 @@ class _Grammar(object):
                     s = ('def t_%s(self, t):\n\t%s\n%s\nx = t_%s\n'
                         %(name, repr(token_value), code, name))
                     d = {}
-                    #print "Exec:", s
                     exec(s, d)
 
                     setattr(self, 't_%s'%name, d['x'].__get__(self))
@@ -785,7 +779,6 @@ class _Grammar(object):
 
         if not token_added:
             self.tokens.append(name)
-            #print "Setattr:", 't_%s'%name, token_value
             setattr(self, 't_%s'%name, token_value)
 
     def _add_token(self, name, token_value):
@@ -814,7 +807,6 @@ class _Grammar(object):
         s = ('def p_%s(self, p):\n\t%r\n%s\nx = p_%s\n'
             %(rule_name, rule_def, code, rule_name))
         d = {}
-        #print "Exec:", s
         exec(s, d)
         setattr(self, 'p_%s'%rule_name, types.MethodType(d['x'], self))
 
