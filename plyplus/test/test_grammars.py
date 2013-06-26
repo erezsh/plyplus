@@ -13,7 +13,8 @@ logging.basicConfig(level=logging.INFO)
 
 CUR_PATH = os.path.split(__file__)[0]
 def _read(n, *args):
-    with open(os.path.join(CUR_PATH, n), *args) as f:
+    kwargs = {'encoding': 'iso-8859-1'}
+    with open(os.path.join(CUR_PATH, n), *args, **kwargs) as f:
         return f.read()
 
 if os.name == 'nt':
@@ -22,7 +23,7 @@ if os.name == 'nt':
     else:
         PYTHON_LIB = os.path.join(sys.prefix, 'Lib')
 else:
-    PYTHON_LIB = '/usr/lib64/python2.7/'
+    PYTHON_LIB = '/usr/lib/python2.7/'
 
 class TestPythonG(unittest.TestCase):
     def setUp(self):
@@ -108,3 +109,5 @@ class TestConfigG(unittest.TestCase):
             """)
 
 
+if __name__ == '__main__':
+    unittest.main()
