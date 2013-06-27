@@ -109,6 +109,10 @@ class TestConfigG(unittest.TestCase):
             """)
 
 
+#t = TestPythonG()
+#t.setUp()
+#t.test_python_lib()
+
 if __name__ == '__main__':
     unittest.main()
 

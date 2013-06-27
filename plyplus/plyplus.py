@@ -13,7 +13,8 @@ from ply import lex, yacc
 from . import PLYPLUS_DIR, grammar_parser
 from .utils import StringTypes, StringType
 
-#from .strees import SVisitor, STransformer, is_stree, SVisitor_Recurse, Str
+#from .strees import SVisitor, STransformer, SVisitor_Recurse, STree
+#Tree, Visitor, Transformer, Visitor_Recurse = STree, SVisitor, STransformer, SVisitor_Recurse
 from .treepy import Tree, Visitor, Transformer, Visitor_Recurse
 
 class Str(StringType):

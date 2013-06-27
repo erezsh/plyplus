@@ -1,8 +1,9 @@
 from itertools import islice, chain
 
+_DEBUG = False
+
 _DATA = 0
 _NODES = 1
-
 
 def _join_paths(p1, p2):
     assert isinstance(p1, (tuple, list))
@@ -37,9 +38,6 @@ class NodeInterface(object):
             kid = self.children[i]
             self.children[i:i+1] = kid.children
 
-    def __repr__(self):
-        return '%s(%s, %s)' % (type(self).__name__, self.data, self.children)
-
     def __eq__(self, other):
         return self.data == other.data and self.children == other.children
     def __ne__(self, other):
@@ -52,9 +50,10 @@ class NodeInterface(object):
 
 class Node(NodeInterface):
     def __init__(self, root, path, raw_node):
-        assert root and raw_node, (root, raw_node)
-        assert path is not None
-        assert isinstance(raw_node, list), raw_node     # XXX
+        if _DEBUG:
+            assert root and raw_node, (root, raw_node)
+            assert path is not None
+            assert isinstance(raw_node, list), raw_node     # XXX
         self.root = root
         self.path = path
         self.raw_node = raw_node
@@ -77,7 +76,8 @@ class ChildrenInterface(object):
         else:
             node = self.raw_nodes[path]
 
-        assert isinstance(node, list), (node, path, self.raw_nodes)     # XXX
+        if _DEBUG:
+            assert isinstance(node, list), (node, path, self.raw_nodes)     # XXX
         return node
 
 
@@ -85,10 +85,12 @@ class Children(ChildrenInterface):
     def __init__(self, node):
         self.node = node
         self.raw_nodes = node.raw_node[_NODES]
-        assert all(isinstance(n, list) for n in self.raw_nodes)     # XXX
+        if _DEBUG:
+            assert all(isinstance(n, list) for n in self.raw_nodes)     # XXX
 
     def append(self, tree):
-        assert isinstance(tree, (Tree, Node)), repr(tree)   # XXX just tree
+        if _DEBUG:
+            assert isinstance(tree, (Tree, Node)), repr(tree)   # XXX just tree
         new_node = tree.become_node_of(self.node.root).raw_node
         assert isinstance(new_node, list)
         self.raw_nodes.append(new_node)
@@ -105,9 +107,20 @@ class Children(ChildrenInterface):
         return len(self.raw_nodes)
     def __nonzero__(self):
         return len(self)
+    def __iter__(self):
+        N = Node
+        root = self.node.root
+        return (N(root, i, rn) for i, rn in enumerate(self.raw_nodes))
+    def list_of_branches(self):
+        N = Node
+        root = self.node.root
+        return [N(root, i, rn) for i, rn in enumerate(self.raw_nodes) if rn[_NODES]]
     def __getitem__(self, path):
+        if isinstance(path, int):   # Just an optimization -- the general case can handle it
+            return Node(self.node.root, path, self.raw_nodes[path])
+
         if isinstance(path, slice):     # TODO make better
-            return [Node(self.node.root, 'TODO', x) for x in self.raw_nodes[path]]
+            return [Node(self.node.root, i, rn) for i, rn in enumerate(self.raw_nodes[path])]
 
         return Node(self.node.root, path, self.get_raw_node(path))
     def __setitem__(self, path, tree):
@@ -191,11 +204,11 @@ class Visitor(object):
         while open_queue:
             node = open_queue.pop()
             queue.append(node)
-            open_queue += [x for x in node.children if x.children]
+            open_queue += node.children.list_of_branches()
 
         for node in reversed(queue):
-            if node.children:
-                getattr(self, node.data, self.__default__)(node)
+            assert node.children
+            getattr(self, node.data, self.__default__)(node)
 
     def __default__(self, tree):
         pass
@@ -214,12 +227,10 @@ class Visitor_Recurse(object):
         if pre_f:
             pre_f(tree)
 
-        for branch in tree.children:
-            if branch.children:
-                self._visit(branch)
+        for branch in tree.children.list_of_branches():
+            self._visit(branch)
 
         f = getattr(self, tree.data, self.__default__)
-        f = self.__default__
         return f(tree)
 
     def __default__(self, tree):

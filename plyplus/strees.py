@@ -6,7 +6,6 @@ from .stree_collection import STreeCollection
 
 from .utils import StringTypes, StringType, classify, _cache_0args
 
-
 class Str(StringType):
     # XXX Required to exclude 'parent'
     def __getstate__(self):
@@ -23,6 +22,17 @@ class STree(object):
             self.clear_cache()
         else:
             self.reset(head, tail)
+
+    def _get_data(self):
+        return self.head
+    def _set_data(self, head):
+        self.head = head
+
+    @property
+    def children(self):
+        return self.tail
+
+    data = property(_get_data, _set_data)
 
     def reset(self, head, tail):
         "Warning: calculations done on tree will have to be manually re-run on the tail elements"    # XXX
