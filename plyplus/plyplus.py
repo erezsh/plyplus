@@ -570,8 +570,8 @@ class _Grammar(object):
         self.tab_filename = tab_filename
         self.source_name = source_name
         self.tokens = []    # for lex module
-        self.rules_to_flatten = []
-        self.rules_to_expand = []
+        self.rules_to_flatten = set()
+        self.rules_to_expand = set()
         self._newline_tokens = set()
         self._ignore_tokens = set()
         self.lexer_postproc = None
@@ -765,12 +765,24 @@ class _Grammar(object):
             rule_name = rule_name[len(mods):]
 
         if RuleMods.EXPAND in mods:
-            self.rules_to_expand.append( rule_name )
+            self.rules_to_expand.add( rule_name )
         elif RuleMods.FLATTEN in mods:
-            self.rules_to_flatten.append( rule_name )
+            self.rules_to_flatten.add( rule_name )
 
-        if RuleMods.EXPAND1 in mods or RuleMods.EXPAND in mods:  # EXPAND is here just for the speed-up
+        if RuleMods.EXPAND1 in mods:
             code = '\tp[0] = self.tree_class(%r, p[1:], skip_adjustments=True) if len(p)>2 else p[1]' % (rule_name,)
+        elif RuleMods.EXPAND in mods:
+            # EXPAND is here to keep tree-depth minimal, it won't expand all EXPAND rules, just the recursive ones
+            code = ('\tif len(p) <= 2:\n'
+                    '\t\tp[0] = p[1]\n'
+                    '\t\treturn\n'
+                    '\tsubtree = []\n'
+                    '\tfor child in p[1:]:\n'
+                    '\t\tif isinstance(child, self.tree_class) and child.head in self.rules_to_expand:\n'
+                    '\t\t\tsubtree.extend(child.tail)\n'
+                    '\t\telse:\n'
+                    '\t\t\tsubtree.append(child)\n'
+                    '\tp[0] = self.tree_class(%r, subtree, skip_adjustments=True)') % (rule_name,)
         else:
             code = '\tp[0] = self.tree_class(%r, p[1:], skip_adjustments=True)' % (rule_name,)
         s = ('def p_%s(self, p):\n\t%r\n%s\nx = p_%s\n'
