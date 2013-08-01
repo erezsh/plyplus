@@ -720,20 +720,18 @@ class _Grammar(object):
 
                     self.tokens.append(name)
 
-                    code = ('\tt.type = self._%s_unless_toks_dict.get(t.value, %r)\n' % (name, name)
-                           +'\tfor regexp, tokname in self._%s_unless_toks_regexps:\n' % (name,)
-                           +'\t\tif regexp.match(t.value):\n'
-                           +'\t\t\tt.type = tokname\n'
-                           +'\t\t\tbreak\n'
-                           +'\treturn t')
-                    s = ('def t_%s(self, t):\n\t%s\n%s\nx = t_%s\n'
-                        %(name, repr(token_value), code, name))
-                    d = {}
-                    exec(s, d)
+                    def t_token(self, t):
+                        t.type = getattr(self, '_%s_unless_toks_dict' % (name,)).get(t.value, name)
+                        for regexp, tokname in getattr(self, '_%s_unless_toks_regexps' % (name,)):
+                            if regexp.match(t.value):
+                                t.type = tokname
+                                break
+                        return t
+                    t_token.__doc__ = token_value
 
-                    setattr(self, 't_%s'%name, d['x'].__get__(self))
-                    setattr(self, '_%s_unless_toks_dict'%name, unless_toks_dict)
-                    setattr(self, '_%s_unless_toks_regexps'%name, unless_toks_regexps)
+                    setattr(self, 't_%s' % (name,), t_token.__get__(self))
+                    setattr(self, '_%s_unless_toks_dict' % (name,), unless_toks_dict)
+                    setattr(self, '_%s_unless_toks_regexps' % (name,), unless_toks_regexps)
 
                     token_added = True
 
@@ -770,26 +768,27 @@ class _Grammar(object):
             self.rules_to_flatten.add( rule_name )
 
         if RuleMods.EXPAND1 in mods:
-            code = '\tp[0] = self.tree_class(%r, p[1:], skip_adjustments=True) if len(p)>2 else p[1]' % (rule_name,)
+            def p_rule(self, p):
+                p[0] = self.tree_class(rule_name, p[1:], skip_adjustments=True) if len(p) > 2 else p[1]
         elif RuleMods.EXPAND in mods:
             # EXPAND is here to keep tree-depth minimal, it won't expand all EXPAND rules, just the recursive ones
-            code = ('\tif len(p) <= 2:\n'
-                    '\t\tp[0] = p[1]\n'
-                    '\t\treturn\n'
-                    '\tsubtree = []\n'
-                    '\tfor child in p[1:]:\n'
-                    '\t\tif isinstance(child, self.tree_class) and child.head in self.rules_to_expand:\n'
-                    '\t\t\tsubtree.extend(child.tail)\n'
-                    '\t\telse:\n'
-                    '\t\t\tsubtree.append(child)\n'
-                    '\tp[0] = self.tree_class(%r, subtree, skip_adjustments=True)') % (rule_name,)
+            def p_rule(self, p):
+                if len(p) == 2:
+                    p[0] = p[1]
+                    return
+
+                subtree = []
+                for child in p[1:]:
+                    if isinstance(child, self.tree_class) and child.head in self.rules_to_expand:
+                        subtree.extend(child.tail)
+                    else:
+                        subtree.append(child)
+                p[0] = self.tree_class(rule_name, subtree, skip_adjustments=True)
         else:
-            code = '\tp[0] = self.tree_class(%r, p[1:], skip_adjustments=True)' % (rule_name,)
-        s = ('def p_%s(self, p):\n\t%r\n%s\nx = p_%s\n'
-            %(rule_name, rule_def, code, rule_name))
-        d = {}
-        exec(s, d)
-        setattr(self, 'p_%s'%rule_name, types.MethodType(d['x'], self))
+            def p_rule(self, p):
+                p[0] = self.tree_class(rule_name, p[1:], skip_adjustments=True)
+        p_rule.__doc__ = rule_def
+        setattr(self, 'p_%s' % (rule_name,), types.MethodType(p_rule, self))
 
 
     @staticmethod
