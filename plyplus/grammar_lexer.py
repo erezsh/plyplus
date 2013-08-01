@@ -34,10 +34,14 @@ t_RPAR = '\)'
 t_COLON = ':'
 t_SEMICOLON = ';'
 t_REGEXP = r"'(.|\n)*?[^\\]'"
-t_SECTION = '\#\#\#(.|\\n)*'
 t_LCURLY = '{'
 t_RCURLY = '}'
 
+def t_SECTION(t):
+    r'\#\#\#(.|\n)*'
+    # line number information used to ensure tracebacks refer to the correct line
+    t.lineno = t.lexer.lineno
+    return t
 
 def t_COMMENT(t):
     r'//[^\n]*\n|/[*](.|\n)*?[*]/'

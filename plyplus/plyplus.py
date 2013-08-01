@@ -593,7 +593,13 @@ class _Grammar(object):
             ply_grammar, = ply_grammar_and_code
         else:
             ply_grammar, code = ply_grammar_and_code
-            exec(code, locals())
+
+            # prefix with newlines to get line-number count correctly (ensures tracebacks are correct)
+            src_code = '\n' * (max(code.line, 1) - 1) + code
+
+            # compiling before executing attaches source_name as filename: shown in tracebacks
+            exec_code = compile(src_code, source_name, 'exec')
+            exec(exec_code, locals())
 
         for x in ply_grammar:
             type_, (name, defin) = x.head, x.tail

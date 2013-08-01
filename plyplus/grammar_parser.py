@@ -13,9 +13,15 @@ YACC_TAB_MODULE = "plyplus_grammar_parsetab"
 
 def p_extgrammar(p):
     """extgrammar : grammar
-                  | grammar SECTION
     """
     p[0] = S('extgrammar', p[1:])
+
+def p_extgrammar_with_code(p):
+    """extgrammar : grammar SECTION
+    """
+    p[0] = S('extgrammar', p[1:])
+    # preserve line-number information in AST, used for tracebacks
+    p[0].tail[-1].line = p.slice[2].lineno
 
 def p_grammar(p):
     """grammar  : def
