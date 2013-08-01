@@ -3,7 +3,9 @@ from __future__ import absolute_import
 import unittest
 import logging
 import os
+import sys
 from io import open
+from ply import yacc
 
 from plyplus.plyplus import Grammar, TokValue, ParseError
 
@@ -59,6 +61,16 @@ class TestPlyPlus(unittest.TestCase):
                     UNIB: '\u0101';
                     """)
         g.parse(u'\xa3\u0101\u00a3')
+
+    def test_recurse_expansion(self):
+        """Verify that stack depth doesn't get exceeded on recursive rules marked for expansion."""
+        g = Grammar(r"""@start: a | start a ; a : A ; A : 'a' ;""")
+
+        # Force PLY to write to the debug log, but prevent writing it to the terminal (uses repr() on the half-built
+        # STree data structures, which uses recursion).
+        g._grammar.debug = yacc.NullLogger()
+
+        g.parse("a" * (sys.getrecursionlimit() / 4))
 
 def test_python_lex(code=FIB, expected=54):
     g = Grammar(_read('python.g'))
