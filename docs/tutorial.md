@@ -19,7 +19,7 @@ The rule specifies that it must begin with a rule called 'name', follow by a seq
 
 Rule 2. -- name: '\w+' ;
 
-The rule 'name' (as referred to by start), contains just one token. The token is defined using a regular expression (all tokens are regexps), and matches words (any sequence of one or more letters). Note that we defined it in a new rule, instead of defining it anonymously in 'start', because plyplus filters the output for tokens don't reside within their own rule. The rationale is that most tokens are useless punctuation, and in the cases that they aren't, the rule is useful to explain their significance.
+The rule 'name' (as referred to by start), contains just one token. The token is defined using a regular expression (all tokens are regexps), and matches words (any sequence of one or more letters). Note that we defined it in a new rule, instead of defining it anonymously in 'start', because plyplus filters the output for tokens that don't reside within their own rule. The rationale is that most tokens are useless punctuation, and in the cases that they aren't, the rule is useful to explain their significance.
 
 Let's see the result of parsing with the grammar.
 
