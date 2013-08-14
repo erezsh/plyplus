@@ -122,6 +122,51 @@ class TestPlyPlus(unittest.TestCase):
         [list] = r.tail
         self.assertSequenceEqual([item.head for item in list.tail], ())
 
+    def test_empty_flatten_list(self):
+        g = Grammar(r"""start: list ;
+                        #list: | item list ;
+                        item : A ;
+                        A: 'a' ;
+                     """)
+        r = g.parse("")
+
+        # Because 'list' is a flatten rule it's top-level element should *never* be expanded
+        self.assertSequenceEqual([subtree.head for subtree in r.tail], ('list',))
+
+        # Sanity check: verify that 'list' contains no 'item's as we've given it none
+        [list] = r.tail
+        self.assertSequenceEqual([item.head for item in list.tail], ())
+
+    def test_single_item_flatten_list(self):
+        g = Grammar(r"""start: list ;
+                        #list: | item list ;
+                        item : A ;
+                        A: 'a' ;
+                     """)
+        r = g.parse("a")
+
+        # Because 'list' is a flatten rule it's top-level element should *never* be expanded
+        self.assertSequenceEqual([subtree.head for subtree in r.tail], ('list',))
+
+        # Sanity check: verify that 'list' contains exactly the one 'item' we've given it
+        [list] = r.tail
+        self.assertSequenceEqual([item.head for item in list.tail], ('item',))
+
+    def test_multiple_item_flatten_list(self):
+        g = Grammar(r"""start: list ;
+                        #list: | item list ;
+                        item : A ;
+                        A: 'a' ;
+                     """)
+        r = g.parse("aa")
+
+        # Because 'list' is a flatten rule it's top-level element should *never* be expanded
+        self.assertSequenceEqual([subtree.head for subtree in r.tail], ('list',))
+
+        # Sanity check: verify that 'list' contains exactly the two 'item's we've given it
+        [list] = r.tail
+        self.assertSequenceEqual([item.head for item in list.tail], ('item', 'item'))
+
 def test_python_lex(code=FIB, expected=54):
     g = Grammar(_read('python.g'))
     l = list(g.lex(code))
