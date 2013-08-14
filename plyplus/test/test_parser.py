@@ -167,6 +167,16 @@ class TestPlyPlus(unittest.TestCase):
         [list] = r.tail
         self.assertSequenceEqual([item.head for item in list.tail], ('item', 'item'))
 
+    def test_recurse_flatten(self):
+        """Verify that stack depth doesn't get exceeded on recursive rules marked for flattening."""
+        g = Grammar(r"""#start: a | start a ; a : A ; A : 'a' ;""")
+
+        # Force PLY to write to the debug log, but prevent writing it to the terminal (uses repr() on the half-built
+        # STree data structures, which uses recursion).
+        g._grammar.debug = yacc.NullLogger()
+
+        g.parse("a" * (sys.getrecursionlimit() / 4))
+
 def test_python_lex(code=FIB, expected=54):
     g = Grammar(_read('python.g'))
     l = list(g.lex(code))
