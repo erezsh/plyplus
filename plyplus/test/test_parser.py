@@ -104,6 +104,79 @@ class TestPlyPlus(unittest.TestCase):
         [list] = r.tail
         self.assertSequenceEqual([item.head for item in list.tail], ('item', 'item'))
 
+    def test_empty_expand1_list(self):
+        g = Grammar(r"""start: list ;
+                        ?list: item* ;
+                        item : A ;
+                        A: 'a' ;
+                     """)
+        r = g.parse("")
+
+        # because 'list' is an expand-if-contains-one rule and we've provided less than one element (i.e. none) it should *not* have expanded
+        self.assertSequenceEqual([subtree.head for subtree in r.tail], ('list',))
+
+        # regardless of the amount of items: there should be only *one* child in 'start' because 'list' isn't an expand-all rule
+        self.assertEqual(len(r.tail), 1)
+
+        # Sanity check: verify that 'list' contains no 'item's as we've given it none
+        [list] = r.tail
+        self.assertSequenceEqual([item.head for item in list.tail], ())
+
+    def test_empty_flatten_list(self):
+        g = Grammar(r"""start: list ;
+                        #list: | item list ;
+                        item : A ;
+                        A: 'a' ;
+                     """)
+        r = g.parse("")
+
+        # Because 'list' is a flatten rule it's top-level element should *never* be expanded
+        self.assertSequenceEqual([subtree.head for subtree in r.tail], ('list',))
+
+        # Sanity check: verify that 'list' contains no 'item's as we've given it none
+        [list] = r.tail
+        self.assertSequenceEqual([item.head for item in list.tail], ())
+
+    def test_single_item_flatten_list(self):
+        g = Grammar(r"""start: list ;
+                        #list: | item list ;
+                        item : A ;
+                        A: 'a' ;
+                     """)
+        r = g.parse("a")
+
+        # Because 'list' is a flatten rule it's top-level element should *never* be expanded
+        self.assertSequenceEqual([subtree.head for subtree in r.tail], ('list',))
+
+        # Sanity check: verify that 'list' contains exactly the one 'item' we've given it
+        [list] = r.tail
+        self.assertSequenceEqual([item.head for item in list.tail], ('item',))
+
+    def test_multiple_item_flatten_list(self):
+        g = Grammar(r"""start: list ;
+                        #list: | item list ;
+                        item : A ;
+                        A: 'a' ;
+                     """)
+        r = g.parse("aa")
+
+        # Because 'list' is a flatten rule it's top-level element should *never* be expanded
+        self.assertSequenceEqual([subtree.head for subtree in r.tail], ('list',))
+
+        # Sanity check: verify that 'list' contains exactly the two 'item's we've given it
+        [list] = r.tail
+        self.assertSequenceEqual([item.head for item in list.tail], ('item', 'item'))
+
+    def test_recurse_flatten(self):
+        """Verify that stack depth doesn't get exceeded on recursive rules marked for flattening."""
+        g = Grammar(r"""#start: a | start a ; a : A ; A : 'a' ;""")
+
+        # Force PLY to write to the debug log, but prevent writing it to the terminal (uses repr() on the half-built
+        # STree data structures, which uses recursion).
+        g._grammar.debug = yacc.NullLogger()
+
+        g.parse("a" * (sys.getrecursionlimit() / 4))
+
 def test_python_lex(code=FIB, expected=54):
     g = Grammar(_read('python.g'))
     l = list(g.lex(code))
