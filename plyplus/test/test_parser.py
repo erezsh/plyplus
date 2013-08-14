@@ -104,6 +104,24 @@ class TestPlyPlus(unittest.TestCase):
         [list] = r.tail
         self.assertSequenceEqual([item.head for item in list.tail], ('item', 'item'))
 
+    def test_empty_expand1_list(self):
+        g = Grammar(r"""start: list ;
+                        ?list: item* ;
+                        item : A ;
+                        A: 'a' ;
+                     """)
+        r = g.parse("")
+
+        # because 'list' is an expand-if-contains-one rule and we've provided less than one element (i.e. none) it should *not* have expanded
+        self.assertSequenceEqual([subtree.head for subtree in r.tail], ('list',))
+
+        # regardless of the amount of items: there should be only *one* child in 'start' because 'list' isn't an expand-all rule
+        self.assertEqual(len(r.tail), 1)
+
+        # Sanity check: verify that 'list' contains no 'item's as we've given it none
+        [list] = r.tail
+        self.assertSequenceEqual([item.head for item in list.tail], ())
+
 def test_python_lex(code=FIB, expected=54):
     g = Grammar(_read('python.g'))
     l = list(g.lex(code))
