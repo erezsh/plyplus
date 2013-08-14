@@ -784,7 +784,7 @@ class _Grammar(object):
                         subtree.extend(child.tail)
                     else:
                         subtree.append(child)
-                p[0] = self.tree_class(rule_name, subtree, skip_adjustments=True) if len(subtree) > 1 else subtree[0]
+                p[0] = self.tree_class(rule_name, subtree, skip_adjustments=True) if len(subtree) != 1 else subtree[0]
         else:
             def p_rule(self, p):
                 p[0] = self.tree_class(rule_name, p[1:], skip_adjustments=True)
