@@ -773,18 +773,24 @@ class _Grammar(object):
         elif RuleMods.FLATTEN in mods:
             self.rules_to_flatten.add( rule_name )
 
-        if RuleMods.EXPAND in mods or RuleMods.EXPAND1 in mods:
-            # EXPAND is here to keep tree-depth minimal, it won't expand all EXPAND rules, just the recursive ones
+        if RuleMods.EXPAND in mods or RuleMods.EXPAND1 in mods or RuleMods.FLATTEN in mods:
+            # EXPAND and FLATTEN are here to keep tree-depth minimal, it won't expand all rules, just the recursive ones
             # EXPAND1: perform necessary expansions on children first to ensure we don't end up expanding inside our
             #          parents if (after expansion) we have more than one child.
             def p_rule(self, p):
                 subtree = []
                 for child in p[1:]:
-                    if isinstance(child, self.tree_class) and child.head in self.rules_to_expand:
+                    if isinstance(child, self.tree_class) and (
+                               (                            child.head in self.rules_to_expand )
+                            or (child.head == rule_name and child.head in self.rules_to_flatten)
+                            ):
                         subtree.extend(child.tail)
                     else:
                         subtree.append(child)
-                p[0] = self.tree_class(rule_name, subtree, skip_adjustments=True) if len(subtree) != 1 else subtree[0]
+                if len(subtree) == 1 and (RuleMods.EXPAND in mods or RuleMods.EXPAND1 in mods):
+                    p[0] = subtree[0]
+                else:
+                    p[0] = self.tree_class(rule_name, subtree, skip_adjustments=True)
         else:
             def p_rule(self, p):
                 p[0] = self.tree_class(rule_name, p[1:], skip_adjustments=True)
