@@ -532,15 +532,25 @@ class LexerWrapper(object):
 
 class Grammar(object):
     def __init__(self, grammar, **options):
-        if hasattr(grammar, 'read'):
-            # PLY turns "a.b" into "b", so gotta get rid of the dot.
-            tab_filename = "parsetab_%s" % os.path.split(grammar.name)[1].replace('.', '_')
+        # Some, but not all file-like objects have a 'name' attribute
+        try:
             source = grammar.name
-            grammar = grammar.read()
-        else:
-            assert isinstance(grammar, StringTypes)
-            tab_filename = "parsetab_%s" % str(hash(grammar)%(2**32))
+        except AttributeError:
             source = '<string>'
+            tab_filename = "parsetab_%s" % str(hash(grammar)%(2**32))
+        else:
+            # PLY turns "a.b" into "b", so gotta get rid of the dot.
+            tab_filename = "parsetab_%s" % os.path.basename(source).replace('.', '_')
+
+        # Drain file-like objects to get their contents
+        try:
+            read = grammar.read
+        except AttributeError:
+            pass
+        else:
+            grammar = read()
+
+        assert isinstance(grammar, StringTypes)
 
         grammar_tree = grammar_parser.parse(grammar)
         if not grammar_tree:
