@@ -7,14 +7,22 @@ from .stree_collection import STreeCollection
 from .utils import StringTypes, StringType, classify, _cache_0args
 
 
-class Str(StringType):
-    # XXX Required to exclude 'parent'
-    def __getstate__(self):
-        return StringType(self)
-    def __setstate__(self, x):
-        pass
+class WeakPickleMixin(object):
+    """Prevent pickling of weak references to attributes"""
 
-class STree(object):
+    def __getstate__(self):
+        dict = self.__dict__.copy()
+
+        # Prevent pickling of weak references: pickle doesn't stomach them
+        for key, val in dict.items():
+            if isinstance(val, ref):
+                dict.pop(key)
+
+        return dict
+
+class Str(WeakPickleMixin, StringType): pass
+
+class STree(WeakPickleMixin, object):
     # __slots__ = 'head', 'tail', '_cache', 'parent', 'index_in_parent'
 
     def __init__(self, head, tail, skip_adjustments=False):
@@ -93,10 +101,10 @@ class STree(object):
         return not (self == other)
 
     def __getstate__(self):
-        return self.head, self.tail
-    def __setstate__(self, data):
-        self.head, self.tail = data
-        self.clear_cache()
+        dict = super(STree, self).__getstate__()
+        # No point in pickling a cache...
+        dict.pop('_cache', None)
+        return dict
 
     def __deepcopy__(self, memo):
         return type(self)(self.head, deepcopy(self.tail, memo))
