@@ -10,15 +10,28 @@ from .utils import StringTypes, StringType, classify, _cache_0args
 class WeakPickleMixin(object):
     """Prevent pickling of weak references to attributes"""
 
+    weak_attributes = (
+            'parent',
+        )
+
     def __getstate__(self):
         dict = self.__dict__.copy()
 
-        # Prevent pickling of weak references: pickle doesn't stomach them
+        # Pickle weak references as hard references, pickle deals with circular references for us
         for key, val in dict.items():
             if isinstance(val, ref):
-                dict.pop(key)
+                dict[key] = val()
 
         return dict
+
+    def __setstate__(self, data):
+        self.__dict__.update(data)
+
+        # Convert hard references that should be weak to weak references
+        for key in data:
+            val = getattr(self, key)
+            if key in self.weak_attributes and val is not None:
+                setattr(self, key, ref(val))
 
 class Str(WeakPickleMixin, StringType): pass
 
