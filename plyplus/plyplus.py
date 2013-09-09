@@ -464,12 +464,6 @@ class TokValue(Str):
         inst.index = index
         return inst
 
-    # XXX Required to exclude 'parent'
-    def __getstate__(self):
-        return self.type, self.line, self.column, self.pos_in_stream, self.index
-    def __setstate__(self, x):
-        self.type, self.line, self.column, self.pos_in_stream, self.index = x
-
 class LexerWrapper(object):
     def __init__(self, lexer, newline_tokens_names, newline_char='\n', ignore_token_names=()):
         self.lexer = lexer
