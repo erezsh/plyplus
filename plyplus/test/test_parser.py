@@ -4,7 +4,15 @@ import unittest
 import logging
 import os
 import sys
-from io import open
+try:
+    from cStringIO import StringIO as cStringIO
+except ImportError:
+    # Available only in Python 2.x, 3.x only has io.StringIO from below
+    cStringIO = None
+from io import (
+        StringIO as uStringIO,
+        open,
+    )
 from ply import yacc
 
 from plyplus.plyplus import Grammar, TokValue, ParseError
@@ -54,6 +62,15 @@ class TestPlyPlus(unittest.TestCase):
         g = Grammar("start: '\(' name_list (COMMA MUL NAME)? '\)'; @name_list: NAME | name_list COMMA NAME ;  MUL: '\*'; COMMA: ','; NAME: '\w+'; ")
         l2 = g.parse('(a,b,c,*x)')
         assert l == l2, '%s != %s' % (l, l2)
+
+    @unittest.skipIf(cStringIO is None, "cStringIO not available")
+    def test_stringio_bytes(self):
+        """Verify that a Grammar can be created from file-like objects other than Python's standard 'file' object"""
+        Grammar(cStringIO(b"start: a+ b a+? 'b' a*; b: 'b'; a: 'a';"))
+
+    def test_stringio_unicode(self):
+        """Verify that a Grammar can be created from file-like objects other than Python's standard 'file' object"""
+        Grammar(uStringIO(u"start: a+ b a+? 'b' a*; b: 'b'; a: 'a';"))
 
     def test_unicode(self):
         g = Grammar(r"""start: UNIA UNIB UNIA;
