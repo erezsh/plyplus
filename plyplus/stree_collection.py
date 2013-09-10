@@ -14,3 +14,10 @@ class STreeCollection(object):
 
     def __repr__(self):
         return '%s%s' % (type(self).__name__, repr(self.strees))
+
+    def leaf(self, leaf_head):
+        for stree in self.strees:
+            try:
+                yield stree.leaf(leaf_head)
+            except KeyError:
+                pass
