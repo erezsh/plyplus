@@ -146,6 +146,6 @@ Plyplus uses the [MIT license](https://github.com/jquery/jquery/blob/master/MIT-
 
 I hope this readme inspired you to play with Plyplus a bit, and maybe even use it for your project.
 
-For more examples, check out the [test module](/test/plyplus_test.py)
+For more examples, check out the [test module](/plyplus/test/test_parser.py)
 
 If you have any questions or ideas, please email me at erezshin+plyplus at gmail com
