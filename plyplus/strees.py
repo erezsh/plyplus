@@ -33,6 +33,8 @@ class WeakPickleMixin(object):
             if key in self.weak_attributes and val is not None:
                 setattr(self, key, ref(val))
 
+        self._cache = {}
+
 class Str(WeakPickleMixin, StringType): pass
 
 class STree(WeakPickleMixin, object):
