@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name = "PlyPlus",
-    version = "0.5.3",
+    version = "0.5.4",
     packages = ['plyplus', 'plyplus.test', 'plyplus.grammars', 'examples', 'docs'], #find_packages(),
     #scripts = ['say_hello.py'],
 
