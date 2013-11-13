@@ -103,6 +103,20 @@ class TestPlyPlus(unittest.TestCase):
         # regardless of the amount of items: there should be only *one* child in 'start' because 'list' isn't an expand-all rule
         self.assertEqual(len(r.tail), 1)
 
+    def test_expand1_lists_with_one_item_2(self):
+        g = Grammar(r"""start: list ;
+                        ?list: item+ '!';
+                        item : A ;
+                        A: 'a' ;
+                    """)
+        r = g.parse("a!")
+
+        # because 'list' is an expand-if-contains-one rule and we only provided one element it should have expanded to 'item'
+        self.assertSequenceEqual([subtree.head for subtree in r.tail], ('item',))
+
+        # regardless of the amount of items: there should be only *one* child in 'start' because 'list' isn't an expand-all rule
+        self.assertEqual(len(r.tail), 1)
+
     def test_dont_expand1_lists_with_multiple_items(self):
         g = Grammar(r"""start: list ;
                         ?list: item+ ;
@@ -120,6 +134,26 @@ class TestPlyPlus(unittest.TestCase):
         # Sanity check: verify that 'list' contains the two 'item's we've given it
         [list] = r.tail
         self.assertSequenceEqual([item.head for item in list.tail], ('item', 'item'))
+
+    def test_dont_expand1_lists_with_multiple_items_2(self):
+        g = Grammar(r"""start: list ;
+                        ?list: item+ '!';
+                        item : A ;
+                        A: 'a' ;
+                    """)
+        r = g.parse("aa!")
+
+        # because 'list' is an expand-if-contains-one rule and we've provided more than one element it should *not* have expanded
+        self.assertSequenceEqual([subtree.head for subtree in r.tail], ('list',))
+
+        # regardless of the amount of items: there should be only *one* child in 'start' because 'list' isn't an expand-all rule
+        self.assertEqual(len(r.tail), 1)
+
+        # Sanity check: verify that 'list' contains the two 'item's we've given it
+        [list] = r.tail
+        self.assertSequenceEqual([item.head for item in list.tail], ('item', 'item'))
+
+
 
     def test_empty_expand1_list(self):
         g = Grammar(r"""start: list ;
@@ -139,9 +173,28 @@ class TestPlyPlus(unittest.TestCase):
         [list] = r.tail
         self.assertSequenceEqual([item.head for item in list.tail], ())
 
+    def test_empty_expand1_list_2(self):
+        g = Grammar(r"""start: list ;
+                        ?list: item* '!'?;
+                        item : A ;
+                        A: 'a' ;
+                     """)
+        r = g.parse("")
+
+        # because 'list' is an expand-if-contains-one rule and we've provided less than one element (i.e. none) it should *not* have expanded
+        self.assertSequenceEqual([subtree.head for subtree in r.tail], ('list',))
+
+        # regardless of the amount of items: there should be only *one* child in 'start' because 'list' isn't an expand-all rule
+        self.assertEqual(len(r.tail), 1)
+
+        # Sanity check: verify that 'list' contains no 'item's as we've given it none
+        [list] = r.tail
+        self.assertSequenceEqual([item.head for item in list.tail], ())
+
+
     def test_empty_flatten_list(self):
         g = Grammar(r"""start: list ;
-                        #list: | item list ;
+                        #list: | item ',' list;
                         item : A ;
                         A: 'a' ;
                      """)
@@ -156,11 +209,11 @@ class TestPlyPlus(unittest.TestCase):
 
     def test_single_item_flatten_list(self):
         g = Grammar(r"""start: list ;
-                        #list: | item list ;
+                        #list: | item ',' list ;
                         item : A ;
                         A: 'a' ;
                      """)
-        r = g.parse("a")
+        r = g.parse("a,")
 
         # Because 'list' is a flatten rule it's top-level element should *never* be expanded
         self.assertSequenceEqual([subtree.head for subtree in r.tail], ('list',))
@@ -171,11 +224,11 @@ class TestPlyPlus(unittest.TestCase):
 
     def test_multiple_item_flatten_list(self):
         g = Grammar(r"""start: list ;
-                        #list: | item list ;
+                        #list: | item ',' list ;
                         item : A ;
                         A: 'a' ;
                      """)
-        r = g.parse("aa")
+        r = g.parse("a,a,")
 
         # Because 'list' is a flatten rule it's top-level element should *never* be expanded
         self.assertSequenceEqual([subtree.head for subtree in r.tail], ('list',))
