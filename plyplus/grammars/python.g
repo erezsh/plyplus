@@ -227,7 +227,9 @@ list_iter : list_for | list_if ;
 stunted_testlist : stunted_test ((COMMA stunted_test)+ COMMA?)? ;
 
 dict : LBRACE dictmaker? RBRACE ;
-@dictmaker : test COLON test (COMMA test COLON test)+? COMMA? ;
+@dictmaker : dict_item (dict_for | (COMMA dict_item)+? COMMA?) ;
+dict_item: test COLON test;
+dict_for : FOR exprlist IN stunted_testlist list_iter?  ;
 
 set : LBRACE listmaker RBRACE;
 
