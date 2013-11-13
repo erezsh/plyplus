@@ -649,10 +649,6 @@ class _Grammar(object):
         if self.subgrammars:
             ApplySubgrammars_Visitor(self.subgrammars).visit(tree)
 
-        # Apply auto-filtering (remove 'punctuation' tokens)
-        if self.auto_filter_tokens:
-            FilterTokens_Visitor().visit(tree)
-
         SimplifySyntaxTree_Visitor(self.rules_to_flatten, self.rules_to_expand, self.keep_empty_trees).visit(tree)
 
         return tree
@@ -792,6 +788,11 @@ class _Grammar(object):
                     subtree.extend(child.tail)
                 else:
                     subtree.append(child)
+
+            # Apply auto-filtering (remove 'punctuation' tokens)
+            if self.auto_filter_tokens and len(subtree) != 1:
+                subtree = filter(is_stree, subtree)
+
             if len(subtree) == 1 and (RuleMods.EXPAND in mods or RuleMods.EXPAND1 in mods):
                 # Self-expansion: only perform on EXPAND and EXPAND1 rules
                 p[0] = subtree[0]
