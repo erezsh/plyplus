@@ -83,6 +83,16 @@ class STree(WeakPickleMixin, object):
                 return
         raise ValueError("head not found: %s"%head)
 
+    def remove_kids_by_head(self, head):
+        removed = 0
+        for i, child in reversed(list(enumerate(self.tail))):
+            if is_stree(child) and child.head == head:
+                del self.tail[i]
+                removed += 1
+        if removed:
+            self.clear_cache()
+        return removed
+
     def remove_kid_by_id(self, child_id):
         for i, child in enumerate(self.tail):
             if id(child) == child_id:
@@ -90,6 +100,12 @@ class STree(WeakPickleMixin, object):
                 self.clear_cache()
                 return
         raise ValueError("id not found: %s"%child_id)
+
+    def prune_by_head(self, head):
+        self.remove_kids_by_head(head)
+        for kid in self.tail:
+            if hasattr(kid, 'prune_by_head'):
+                kid.prune_by_head(head)
 
     def remove_from_parent(self):
         self.parent().remove_kid_by_id(id(self))
