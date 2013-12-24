@@ -5,6 +5,8 @@ from __future__ import absolute_import
 import os
 from tempfile import gettempdir
 
+__version__ = "0.5.7"
+
 PLYPLUS_DIR = os.path.join(gettempdir(), 'plyplus')
 
 try:

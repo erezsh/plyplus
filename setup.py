@@ -1,8 +1,10 @@
+import plyplus
+
 from distutils.core import setup
 
 setup(
     name = "PlyPlus",
-    version = "0.5.6",
+    version = plyplus.__version__,
     packages = ['plyplus', 'plyplus.test', 'plyplus.grammars', 'examples', 'docs'], #find_packages(),
     #scripts = ['say_hello.py'],
 

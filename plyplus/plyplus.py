@@ -7,10 +7,12 @@ import types
 import itertools
 import logging
 import ast
+import hashlib
+import cPickle
 
 from ply import lex, yacc
 
-from . import PLYPLUS_DIR, grammar_parser
+from . import __version__, PLYPLUS_DIR, grammar_parser
 from .utils import StringTypes, StringType
 
 from .strees import STree, SVisitor, STransformer, is_stree, SVisitor_Recurse, Str
@@ -546,11 +548,27 @@ class Grammar(object):
 
         assert isinstance(grammar, StringTypes)
 
+        cache_grammar = options.pop('cache_grammar', False)
+        if cache_grammar:
+            plyplus_cache_filename = PLYPLUS_DIR + '/%s-%s-%s.plyplus' % (tab_filename, hashlib.sha256(grammar).hexdigest(), __version__)
+            if os.path.exists(plyplus_cache_filename):
+                with open(plyplus_cache_filename, 'rb') as f:
+                    self._grammar = cPickle.load(f)
+            else:
+                self._grammar = self._create_grammar(grammar, source, tab_filename, options)
+
+                with open(plyplus_cache_filename, 'wb') as f:
+                    cPickle.dump(self._grammar, f, cPickle.HIGHEST_PROTOCOL)
+        else:
+            self._grammar = self._create_grammar(grammar, source, tab_filename, options)
+
+    @staticmethod
+    def _create_grammar(grammar, source, tab_filename, options):
         grammar_tree = grammar_parser.parse(grammar)
         if not grammar_tree:
             raise GrammarException("Parse Error: Could not create grammar")
 
-        self._grammar = _Grammar(grammar_tree, source, tab_filename, **options)
+        return _Grammar(grammar_tree, source, tab_filename, **options)
 
     def lex(self, text):
         return self._grammar.lex(text)
