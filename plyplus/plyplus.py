@@ -8,7 +8,11 @@ import itertools
 import logging
 import ast
 import hashlib
-import cPickle
+import codecs
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
 from ply import lex, yacc
 
@@ -553,12 +557,12 @@ class Grammar(object):
             plyplus_cache_filename = PLYPLUS_DIR + '/%s-%s-%s.plyplus' % (tab_filename, hashlib.sha256(grammar).hexdigest(), __version__)
             if os.path.exists(plyplus_cache_filename):
                 with open(plyplus_cache_filename, 'rb') as f:
-                    self._grammar = cPickle.load(f)
+                    self._grammar = pickle.load(f)
             else:
                 self._grammar = self._create_grammar(grammar, source, tab_filename, options)
 
                 with open(plyplus_cache_filename, 'wb') as f:
-                    cPickle.dump(self._grammar, f, cPickle.HIGHEST_PROTOCOL)
+                    pickle.dump(self._grammar, f, pickle.HIGHEST_PROTOCOL)
         else:
             self._grammar = self._create_grammar(grammar, source, tab_filename, options)
 
@@ -721,7 +725,7 @@ class _Grammar(object):
         # but for speed reasons, I ended-up with this ridiculus regexp:
         token_value = re.sub(r'(\\[nrf])', r'\\\1', token_value)
 
-        return token_value.decode('unicode-escape')
+        return codecs.getdecoder('unicode_escape')(token_value)[0]
 
     def _add_token_with_mods(self, name, defin):
         token_value, token_features = defin
@@ -793,7 +797,7 @@ class _Grammar(object):
 
         def p_rule(self, p):
             subtree = []
-            for child in p[1:]:
+            for child in p.__getslice__(1, None):
                 if isinstance(child, self.tree_class) and (
                            (                            child.head in self.rules_to_expand )
                         or (child.head == rule_name and child.head in self.rules_to_flatten)
@@ -809,7 +813,7 @@ class _Grammar(object):
 
             # Apply auto-filtering (remove 'punctuation' tokens)
             if self.auto_filter_tokens and len(subtree) != 1:
-                subtree = filter(is_stree, subtree)
+                subtree = list(filter(is_stree, subtree))
 
             if len(subtree) == 1 and (RuleMods.EXPAND in mods or RuleMods.EXPAND1 in mods):
                 # Self-expansion: only perform on EXPAND and EXPAND1 rules
