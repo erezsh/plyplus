@@ -33,8 +33,6 @@ class WeakPickleMixin(object):
             if key in self.weak_attributes and val is not None:
                 setattr(self, key, ref(val))
 
-        self.__dict__['_cache'] = {}
-
 class Str(WeakPickleMixin, StringType): pass
 
 class STree(WeakPickleMixin, object):
@@ -136,6 +134,12 @@ class STree(WeakPickleMixin, object):
         # No point in pickling a cache...
         dict.pop('_cache', None)
         return dict
+
+    def __setstate__(self, data):
+        super(STree, self).__setstate__(data)
+
+        # Ensure we've got a clean cache
+        self.clear_cache()
 
     def __deepcopy__(self, memo):
         return type(self)(self.head, deepcopy(self.tail, memo))
