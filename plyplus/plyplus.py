@@ -74,6 +74,10 @@ from .strees import STree, SVisitor, STransformer, is_stree, SVisitor_Recurse, S
 #DONE: Better error handling (choose between prints and raising exception, setting threshold, etc.)
 #
 
+grammar_logger = logging.getLogger('Grammar')
+grammar_logger.setLevel(logging.ERROR)
+
+
 _TOKEN_NAMES = {
     ':' : 'COLON',
     ',' : 'COMMA',
@@ -603,9 +607,6 @@ class _Grammar(object):
         self.lexer_postproc = None
         self._newline_value = '\n'
 
-        self.logger = logging.getLogger('Grammar')
-        self.logger.setLevel(logging.ERROR)
-
         # -- Build Grammar --
         self.subgrammars = {}
         ExtractSubgrammars_Visitor(source_name, tab_filename, self.options).visit(grammar_tree)
@@ -642,7 +643,7 @@ class _Grammar(object):
 
         # -- Build Parser --
         if not self.just_lex:
-            self.parser = yacc.yacc(module=self, debug=self.debug, tabmodule=tab_filename, errorlog=self.logger, outputdir=PLYPLUS_DIR)
+            self.parser = yacc.yacc(module=self, debug=self.debug, tabmodule=tab_filename, errorlog=grammar_logger, outputdir=PLYPLUS_DIR)
 
     def __repr__(self):
         return '<Grammar from %s, tab at %s>' % (self.source_name, self.tab_filename)
