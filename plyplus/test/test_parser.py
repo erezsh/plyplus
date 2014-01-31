@@ -87,7 +87,7 @@ class TestPlyPlus(unittest.TestCase):
         # STree data structures, which uses recursion).
         g._grammar.debug = yacc.NullLogger()
 
-        g.parse("a" * (sys.getrecursionlimit() / 4))
+        g.parse("a" * (sys.getrecursionlimit() // 4))
 
     def test_expand1_lists_with_one_item(self):
         g = Grammar(r"""start: list ;
@@ -245,7 +245,7 @@ class TestPlyPlus(unittest.TestCase):
         # STree data structures, which uses recursion).
         g._grammar.debug = yacc.NullLogger()
 
-        g.parse("a" * (sys.getrecursionlimit() / 4))
+        g.parse("a" * (sys.getrecursionlimit() // 4))
 
 def test_python_lex(code=FIB, expected=54):
     g = Grammar(_read('python.g'))

@@ -7,6 +7,7 @@ import weakref
 from .strees import STree, is_stree
 from .stree_collection import STreeCollection
 from .plyplus import Grammar
+from .utils import StringTypes, StringType
 from . import grammars
 
 def sum_list(l):
@@ -87,7 +88,7 @@ class STreeSelector(STree):
         if is_stree(other):
             s = other.head
         else:
-            s = unicode(other)   # hopefully string
+            s = StringType(other)   # hopefully string
         regexp = self.tail[1]
         assert regexp[0] == regexp[-1] == '/'
         regexp = regexp[1:-1]
@@ -207,7 +208,7 @@ class STreeSelector(STree):
                                           and x.head in ('elem_tree_param', 'elem_tree')):
             elem_tree_param.reset('elem_tree', [elem_tree_param.tail[0], kwargs[elem_tree_param.tail[0]]])
 
-        str_args = dict((k,re.escape(v)) for k,v in kwargs.items() if isinstance(v, (str, unicode)))
+        str_args = dict((k,re.escape(v)) for k,v in kwargs.items() if isinstance(v, StringTypes))
         for elem_regexp in self.filter(lambda x: is_stree(x) and x.head == 'elem_regexp'):
             elem_regexp.tail = [elem_regexp.tail[0], elem_regexp.tail[0].format(**str_args)]
 
