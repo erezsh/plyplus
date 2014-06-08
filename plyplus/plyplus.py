@@ -164,8 +164,7 @@ class CollectTokenDefs_Visitor(SVisitor):
     def tokendef(self, tree):
         self.tokendefs[ tree.tail[0] ] = tree
 
-    def fragmentdef(self, tree):
-        self.tokendefs[ tree.tail[0] ] = tree
+    fragmentdef = tokendef
 
 def _unescape_token_def(token_def):
     assert token_def[0] == "'" == token_def[-1]
@@ -477,7 +476,7 @@ class TokValue(Str):
 class LexerWrapper(object):
     def __init__(self, lexer, newline_tokens_names, newline_char='\n', ignore_token_names=()):
         self.lexer = lexer
-        self.newline_tokens_names = set(newline_tokens_names)
+        self.newline_tokens_names = frozenset(newline_tokens_names)
         self.ignore_token_names = ignore_token_names
         self.newline_char = newline_char
 
@@ -528,9 +527,9 @@ class LexerWrapper(object):
 
     def _handle_newlines(self, t):
         newlines = t.value.count(self.newline_char)
-        self.lineno += newlines
 
         if newlines:
+            self.lineno += newlines
             self._lexer_pos_of_start_column = t.lexpos + t.value.rindex(self.newline_char)
 
 
@@ -718,6 +717,7 @@ class _Grammar(object):
         # which is bad because our regexps are whitespace agnostic.
         # It also unescapes double backslashes, which messes up with the
         # regexp.
+
         token_value = token_value.replace('\\'*2, '\\'*4)
         # The equivalent whitespace escaping is:
         # token_value = token_value.replace(r'\n', r'\\n')
