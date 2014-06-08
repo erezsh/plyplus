@@ -175,6 +175,30 @@ class STree(WeakPickleMixin, object):
             self.parent = None
             self.index_in_parent = None
 
+    def calc_position(self):
+        for kid in self.tail:
+            if is_stree(kid):
+                kid.calc_position()
+            else:
+                try:
+                    kid.min_line = kid.max_line = kid.line
+                    kid.min_col = kid.max_col = kid.column
+                except AttributeError:
+                    kid.min_line = kid.min_col = kid.max_line = kid.max_col = None
+
+        try:
+            first = next(x for x in self.tail if x.min_line is not None)
+            last = next(x for x in reversed(self.tail) if x.max_line is not None)
+        except StopIteration:
+            self.min_line = self.min_col = self.max_line = self.max_col = None
+            return
+
+        self.min_line = first.min_line
+        self.min_col = first.min_col
+        self.max_line = last.max_line
+        self.max_col = last.max_col
+
+
     def calc_depth(self, depth=0):
         self.depth = depth
         for kid in self.tail:
