@@ -1,10 +1,11 @@
-import plyplus
-
+import re
 from distutils.core import setup
+
+__version__ ,= re.findall('__version__ = "(.*)"', open('plyplus/__init__.py').read())
 
 setup(
     name = "PlyPlus",
-    version = plyplus.__version__,
+    version = __version__,
     packages = ['plyplus', 'plyplus.test', 'plyplus.grammars', 'examples', 'docs'], #find_packages(),
     #scripts = ['say_hello.py'],
 
