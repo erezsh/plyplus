@@ -583,8 +583,33 @@ class Grammar(object):
     def parse(self, text):
         return self._grammar.parse(text)
 
+class GrammarVerifier(SVisitor):
+    def __init__(self):
+        self.rules_used = None
+        self.rules_defined = None
+
+    def rule(self, rule):
+        if not rule.tail:
+            return
+        rule_name = rule.tail[0]
+        if isinstance(rule_name, (str,unicode)) and re.match('^[a-z_]', rule_name):
+            self.rules_used.add(rule_name)
+    def ruledef(self, ruledef):
+        self.rules_defined.add(ruledef.tail[0].lstrip('@#?'))
+
+    def verify(self, tree):
+        self.rules_used = set()
+        self.rules_defined = set()
+        self.visit(tree)
+        undefined = self.rules_used - self.rules_defined
+        if undefined:
+            raise ParseError("Undefined rules: %s" % undefined)
+
+
 class _Grammar(object):
     def __init__(self, grammar_tree, source_name, tab_filename, **options):
+        GrammarVerifier().verify(grammar_tree)
+
         self.options = dict(options)
         self.debug = bool(options.pop('debug', False))
         self.just_lex = bool(options.pop('just_lex', False))
