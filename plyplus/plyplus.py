@@ -586,24 +586,40 @@ class Grammar(object):
 class GrammarVerifier(SVisitor):
     def __init__(self):
         self.rules_used = None
+        self.tokens_used = None
         self.rules_defined = None
+        self.token_defined = None
 
     def rule(self, rule):
         if not rule.tail:
             return
         rule_name = rule.tail[0]
-        if isinstance(rule_name, (str,unicode)) and re.match('^[a-z_]', rule_name):
+        if not isinstance(rule_name, (str,unicode)):
+            return
+        if re.match('^[a-z0-9_]+$', rule_name):
             self.rules_used.add(rule_name)
+        elif re.match('^[A-Z0-9_]+$', rule_name):
+            self.tokens_used.add(rule_name)
+
+    oper = rule
+
     def ruledef(self, ruledef):
         self.rules_defined.add(ruledef.tail[0].lstrip('@#?'))
+    def tokendef(self, tokendef):
+        self.tokens_defined.add(tokendef.tail[0])
 
     def verify(self, tree):
         self.rules_used = set()
+        self.tokens_used = set()
         self.rules_defined = set()
+        self.tokens_defined = set()
         self.visit(tree)
-        undefined = self.rules_used - self.rules_defined
-        if undefined:
-            raise ParseError("Undefined rules: %s" % undefined)
+        undefined_tokens = self.tokens_used - self.tokens_defined
+        undefined_rules = self.rules_used - self.rules_defined
+        if undefined_tokens:
+            raise ParseError("Undefined tokens: %s" % undefined_tokens)
+        if undefined_rules:
+            raise ParseError("Undefined rules: %s" % undefined_rules)
 
 
 class _Grammar(object):
