@@ -74,6 +74,7 @@ from .strees import STree, SVisitor, STransformer, is_stree, SVisitor_Recurse, S
 #DONE: Better error handling (choose between prints and raising exception, setting threshold, etc.)
 #
 
+logging.basicConfig()
 grammar_logger = logging.getLogger('Grammar')
 grammar_logger.setLevel(logging.ERROR)
 
