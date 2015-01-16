@@ -389,45 +389,35 @@ class SimplifyGrammar_Visitor(SVisitor_Recurse):
 
 
 
-class ToPlyGrammar_Tranformer(STransformer):
-    """Transforms grammar into ply-compliant grammar
-    This is only a partial transformation that should be post-processd in order to apply
-    XXX Probably a bad class name
-    """
+class GrammarTreeToList_Transformer(STransformer):
+    """Transforms a grammar tree into a list of grammar elements"""
+
     @staticmethod
     def rules_list(tree):
-        return '\n\t| '.join(tree.tail)
+        return tree.tail
 
     @staticmethod
     def rule(tree):
         return ' '.join(tree.tail)
 
     @staticmethod
-    def extrule(tree):
-        return ' '.join(tree.tail)
-
-    @staticmethod
-    def oper(tree):
-        return '(%s)%s' % (' '.join(tree.tail[:-1]), tree.tail[-1])
-
-    @staticmethod
     def ruledef(tree):
-        return STree('rule', (tree.tail[0], '%s\t: %s'%(tree.tail[0], tree.tail[1])))
+        return ('rule', tree.tail)
 
     @staticmethod
     def optiondef(tree):
-        return STree('option', tree.tail)
+        return ('option', tree.tail)
 
     @staticmethod
     def fragmentdef(tree):
-        return STree('fragment', [None, None])
+        return ('fragment', [None, None])
 
     @staticmethod
     def tokendef(tree):
         if len(tree.tail) > 2:
-            return STree('token_with_mods', [tree.tail[0], tree.tail[1:]])
+            return ('token_with_mods', [tree.tail[0], tree.tail[1:]])
         else:
-            return STree('token', tree.tail)
+            return ('token', tree.tail)
 
     @staticmethod
     def grammar(tree):
@@ -654,13 +644,13 @@ class _Grammar(object):
         SimplifyGrammar_Visitor().visit(grammar_tree)
         tokendefs = SimplifyTokenDefs_Visitor().visit(grammar_tree)
         NameAnonymousTokens_Visitor(tokendefs).visit(grammar_tree)
-        ply_grammar_and_code = ToPlyGrammar_Tranformer().transform(grammar_tree)
+        grammar_list_and_code = GrammarTreeToList_Transformer().transform(grammar_tree)
 
         # code may be omitted
-        if len(ply_grammar_and_code) == 1:
-            ply_grammar, = ply_grammar_and_code
+        if len(grammar_list_and_code) == 1:
+            grammar_list, = grammar_list_and_code
         else:
-            ply_grammar, code = ply_grammar_and_code
+            grammar_list, code = grammar_list_and_code
 
             # prefix with newlines to get line-number count correctly (ensures tracebacks are correct)
             src_code = '\n' * (max(code.line, 1) - 1) + code
@@ -669,8 +659,7 @@ class _Grammar(object):
             exec_code = compile(src_code, source_name, 'exec')
             exec(exec_code, locals())
 
-        for x in ply_grammar:
-            type_, (name, defin) = x.head, x.tail
+        for type_, (name, defin) in grammar_list:
             assert type_ in ('token', 'token_with_mods', 'rule', 'option', 'fragment'), "Can't handle type %s"%type_
             handler = getattr(self, '_add_%s' % type_)
             handler(name, defin)
@@ -731,10 +720,8 @@ class _Grammar(object):
     def _extract_unless_tokens(self, modtokenlist):
         unless_toks_dict = {}
         unless_toks_regexps = []
-        for modtoken in modtokenlist.tail:
-            assert modtoken.head == 'token'
-            modtok_name, modtok_value = modtoken.tail
-
+        for x, (modtok_name, modtok_value) in modtokenlist.tail:
+            assert x == 'token'
 
             self._add_token(modtok_name, modtok_value)
 
@@ -829,14 +816,14 @@ class _Grammar(object):
     def _add_rule(self, rule_name, rule_def):
         mods, = re.match('([@#?]*).*', rule_name).groups()
         if mods:
-            assert rule_def[:len(mods)] == mods
-            rule_def = rule_def[len(mods):]
             rule_name = rule_name[len(mods):]
 
         if RuleMods.EXPAND in mods:
             self.rules_to_expand.add( rule_name )
         elif RuleMods.FLATTEN in mods:
             self.rules_to_flatten.add( rule_name )
+
+        rule_def = '%s\t: %s'%(rule_name, '\n\t| '.join(rule_def))
 
         def p_rule(self, p):
             subtree = []
