@@ -613,6 +613,16 @@ class GrammarVerifier(SVisitor):
             raise ParseError("Undefined rules: %s" % undefined_rules)
 
 
+class _Callback(object):
+    start = "start"
+
+    @staticmethod
+    def t_error(t):
+        raise TokenizeError("Illegal character in input: '%s', line: %s, %s" % (t.value[:32], t.lineno, t.type))
+
+    p_error = NotImplemented
+
+
 class _Grammar(object):
     def __init__(self, grammar_tree, source_name, tab_filename, **options):
         GrammarVerifier().verify(grammar_tree)
@@ -630,13 +640,16 @@ class _Grammar(object):
 
         self.tab_filename = tab_filename
         self.source_name = source_name
-        self.tokens = []    # for lex module
         self.rules_to_flatten = set()
         self.rules_to_expand = set()
         self._newline_tokens = set()
         self._ignore_tokens = set()
         self.lexer_postproc = None
         self._newline_value = '\n'
+
+        self._callback = _Callback()
+        self._callback.tokens = []    # for lex module
+        self._callback.p_error = self.p_error
 
         # -- Build Grammar --
         self.subgrammars = {}
@@ -665,7 +678,7 @@ class _Grammar(object):
             handler(name, defin)
 
         # -- Build lexer --
-        lexer = lex.lex(module=self, reflags=re.UNICODE)
+        lexer = lex.lex(module=self._callback, reflags=re.UNICODE)
         lexer = LexerWrapper(lexer, newline_tokens_names=self._newline_tokens, newline_char=self._newline_value, ignore_token_names=self._ignore_tokens)
         if self.lexer_postproc and not self.ignore_postproc:
             lexer = self.lexer_postproc(lexer)  # apply wrapper
@@ -673,7 +686,7 @@ class _Grammar(object):
 
         # -- Build Parser --
         if not self.just_lex:
-            self.parser = yacc.yacc(module=self, debug=self.debug, tabmodule=tab_filename, errorlog=grammar_logger, outputdir=PLYPLUS_DIR)
+            self.parser = yacc.yacc(module=self._callback, debug=self.debug, tabmodule=tab_filename, errorlog=grammar_logger, outputdir=PLYPLUS_DIR)
 
     def __repr__(self):
         return '<Grammar from %s, tab at %s>' % (self.source_name, self.tab_filename)
@@ -698,7 +711,6 @@ class _Grammar(object):
         if self.errors:
             raise ParseError('\n'.join(self.errors))
 
-        # Apply subgrammars
         if self.subgrammars:
             ApplySubgrammars_Visitor(self.subgrammars).visit(tree)
 
@@ -785,9 +797,9 @@ class _Grammar(object):
                         return t
                     t_token.__doc__ = token_value
 
-                    setattr(self, 't_%s' % (name,), t_token.__get__(self))
+                    setattr(self._callback, 't_%s' % (name,), t_token.__get__(self))
 
-                    self.tokens.append(name)
+                    self._callback.tokens.append(name)
                     token_added = True
 
                 elif mod == '%newline':
@@ -803,8 +815,8 @@ class _Grammar(object):
             raise GrammarException("Unknown token feature: %s" % token_features.head)
 
         if not token_added:
-            self.tokens.append(name)
-            setattr(self, 't_%s'%name, token_value)
+            self._callback.tokens.append(name)
+            setattr(self._callback, 't_%s'%name, token_value)
 
     def _add_token(self, name, token_value):
         assert isinstance(token_value, StringTypes), token_value
@@ -822,7 +834,7 @@ class _Grammar(object):
 
         rule_def = '%s\t: %s'%(rule_name, '\n\t| '.join(rule_def))
 
-        def p_rule(self, p):
+        def p_rule(_, p):
             subtree = []
             for child in p.__getslice__(1, None):
                 if isinstance(child, self.tree_class) and (
@@ -848,13 +860,10 @@ class _Grammar(object):
             else:
                 p[0] = self.tree_class(rule_name, subtree, skip_adjustments=True)
         p_rule.__doc__ = rule_def
-        setattr(self, 'p_%s' % (rule_name,), types.MethodType(p_rule, self))
+        setattr(self._callback, 'p_%s' % (rule_name,), types.MethodType(p_rule, self))
 
 
-    @staticmethod
-    def t_error(t):
-        raise TokenizeError("Illegal character in input: '%s', line: %s, %s" % (t.value[:32], t.lineno, t.type))
-
+    # TODO: move to callback
     def p_error(self, p):
         if p:
             if isinstance(p.value, TokValue):
@@ -868,7 +877,3 @@ class _Grammar(object):
             print(msg)
 
         self.errors.append(msg)
-
-    start = "start"
-
-
