@@ -776,11 +776,9 @@ class _Grammar(object):
 
                     unless_toks_dict, unless_toks_regexps = self._extract_unless_tokens(modtokenlist)
 
-                    self.tokens.append(name)
-
                     def t_token(self, t):
-                        t.type = getattr(self, '_%s_unless_toks_dict' % (name,)).get(t.value, name)
-                        for regexp, tokname in getattr(self, '_%s_unless_toks_regexps' % (name,)):
+                        t.type = unless_toks_dict.get(t.value, name)
+                        for regexp, tokname in unless_toks_regexps:
                             if regexp.match(t.value):
                                 t.type = tokname
                                 break
@@ -788,9 +786,8 @@ class _Grammar(object):
                     t_token.__doc__ = token_value
 
                     setattr(self, 't_%s' % (name,), t_token.__get__(self))
-                    setattr(self, '_%s_unless_toks_dict' % (name,), unless_toks_dict)
-                    setattr(self, '_%s_unless_toks_regexps' % (name,), unless_toks_regexps)
 
+                    self.tokens.append(name)
                     token_added = True
 
                 elif mod == '%newline':
