@@ -259,7 +259,7 @@ LPAREN: '\(';
 RPAREN: '\)';
 LBRACK: '\[';
 RBRACK: '\]';
-LCURLY: '\(';
+LCURLY: '\{';
 RCURLY: '\}';
 COLON: ':';
 SEMICOLON: ';';
