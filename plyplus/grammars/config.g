@@ -14,7 +14,7 @@ OPTION: '[^=:\n;]+[=:][^\n]*'
     name: '[^=:\n;]+';
     VALUE: '[:=][^\n;]*'
     {
-        start: '[:=]' value;
+        start: '[:=]' value?;
         value: '[^:=\n;][^\n;]*';
     };
     WS: '[\t \f]+' (%ignore);
