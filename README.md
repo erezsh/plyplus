@@ -97,7 +97,7 @@ INI files are too open-handed to be a good candidate for LR-parsing, but PlyPlus
 
 Let's parse an INI file that comes with NumPy.
 
-    >>> g = plyplus.Grammar(plyplus.grammars.open('config.g'))   # load config grammar
+    >>> g = plyplus.Grammar(plyplus.grammars.open('config.g'), auto_filter_tokens=False)   # load config grammar
     >>> t = g.parse(file(r"C:\Python26\Lib\site-packages\numpy\core\lib\npy-pkg-config\npymath.ini").read())
 
 List the sections:
