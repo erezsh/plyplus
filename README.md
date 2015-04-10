@@ -89,7 +89,7 @@ Hard to read? Try looking at it visually! (requires pydot)
 
     >>> _.to_png_with_pydot(r'calling_popen.png')
 
-[calling\_popen.png](/docs/calling_popen.png)
+![calling\_popen.png](/docs/calling_popen.png)
 
 ### Parsing INI files
 
