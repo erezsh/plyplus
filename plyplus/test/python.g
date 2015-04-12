@@ -1,6 +1,6 @@
 
 start: module_header? stmts;
-@stmts: stmt*; // A bit permissive, but will help with errornous code */
+@stmts: stmt*; // A bit permissive, but will help with erroneous code */
 @stmt: simple_stmt_list | block_stmt | empty_stmt ;
 @simple_stmt_list: simple_stmt_list2 NL;
 @simple_stmt_list2: simple_stmt ';'? | simple_stmt ';' simple_stmt_list2;
@@ -13,7 +13,7 @@ empty_stmt: NL | INDENT NL? DEDENT; // should handle in lexer level?
 module_header: string NL;
 
 // this import is a bit more permissive than the official one
-import  : IMPORT (module_name (AS NAME)? ) (',' module_name (AS NAME)? )*  // import is wierd!
+import  : IMPORT (module_name (AS NAME)? ) (',' module_name (AS NAME)? )*  // import is weird!
         | FROM relative_module_name IMPORT (import_as_names|LPAREN import_as_names RPAREN|'\*')
         ;
 module_name : NAME (DOT NAME)*;
