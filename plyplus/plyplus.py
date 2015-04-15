@@ -585,12 +585,16 @@ class GrammarVerifier(SVisitor):
         if not rule.tail:
             return
         rule_name = rule.tail[0]
-        if not isinstance(rule_name, (str,unicode)):
+        if not isinstance(rule_name, StringTypes):
             return
-        if re.match('^[a-z0-9_]+$', rule_name):
+        if rule_name.startswith("'"):
+            pass    # literal
+        elif re.match('^[a-z0-9_]+$', rule_name):
             self.rules_used.add(rule_name)
         elif re.match('^[A-Z0-9_]+$', rule_name):
             self.tokens_used.add(rule_name)
+        else:
+            raise RuntimeError("Unexpected rule/token name: %s", rule_name)
 
     oper = rule
 
