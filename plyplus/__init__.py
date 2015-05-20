@@ -2,12 +2,13 @@
 
 from __future__ import absolute_import
 
+from getpass import getuser
 import os
 from tempfile import gettempdir
 
 __version__ = "0.6.1"
 
-PLYPLUS_DIR = os.path.join(gettempdir(), 'plyplus')
+PLYPLUS_DIR = os.path.join(gettempdir(), 'plyplus-' + getuser())
 
 try:
     os.mkdir(PLYPLUS_DIR)
