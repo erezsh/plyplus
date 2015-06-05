@@ -655,6 +655,10 @@ class ParserEngine_Ply(object):
         # ~~~ TODO ~~~
         # self.errors.append(msg)
 
+    def build_parser(self, tab_filename):
+        parser = yacc.yacc(module=self._callback, debug=self.debug, tabmodule=tab_filename, errorlog=grammar_logger, outputdir=PLYPLUS_DIR)
+        return parser
+
 
 class _Grammar(object):
     def __init__(self, grammar_tree, source_name, tab_filename, **options):
@@ -717,7 +721,7 @@ class _Grammar(object):
 
         # -- Build Parser --
         if not self.just_lex:
-            self.parser = yacc.yacc(module=self.parser_engine._callback, debug=self.debug, tabmodule=tab_filename, errorlog=grammar_logger, outputdir=PLYPLUS_DIR)
+            self.parser = self.parser_engine.build_parser(tab_filename=tab_filename)
 
     def __repr__(self):
         return '<Grammar from %s, tab at %s>' % (self.source_name, self.tab_filename)
