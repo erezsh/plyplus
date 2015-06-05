@@ -626,6 +626,35 @@ class _Callback(object):
 
     p_error = NotImplemented
 
+class ParserEngine_Ply(object):
+    def __init__(self, debug):
+        self._callback = _Callback()
+        self._callback.tokens = []    # for lex module
+        self._callback.p_error = self.p_error
+
+        self.debug = debug
+
+    def add_rule(self, name, rule_def, callback_func):
+        ply_rule_def = '%s\t: %s'%(name, '\n\t| '.join(rule_def))
+        callback_func.__doc__ = ply_rule_def
+        setattr(self._callback, 'p_%s' % (name,), types.MethodType(callback_func, self))
+
+    # TODO: move to callback
+    def p_error(self, p):
+        if p:
+            if isinstance(p.value, TokValue):
+                msg = "Syntax error in input at '%s' (type %s) line %s col %s" % (p.value, p.type, p.value.line, p.value.column)
+            else:
+                msg = "Syntax error in input at '%s' (type %s) line %s" % (p.value, p.type, p.lineno)
+        else:
+            msg = "Syntax error in input (details unknown): %s" % p
+
+        if self.debug:
+            print(msg)
+
+        # ~~~ TODO ~~~
+        # self.errors.append(msg)
+
 
 class _Grammar(object):
     def __init__(self, grammar_tree, source_name, tab_filename, **options):
@@ -651,10 +680,6 @@ class _Grammar(object):
         self.lexer_postproc = None
         self._newline_value = '\n'
 
-        self._callback = _Callback()
-        self._callback.tokens = []    # for lex module
-        self._callback.p_error = self.p_error
-
         # -- Build Grammar --
         self.subgrammars = {}
         ExtractSubgrammars_Visitor(source_name, tab_filename, self.options).visit(grammar_tree)
@@ -676,13 +701,15 @@ class _Grammar(object):
             exec_code = compile(src_code, source_name, 'exec')
             exec(exec_code, locals())
 
+        self.parser_engine = ParserEngine_Ply(self.debug)
+
         for type_, (name, defin) in grammar_list:
             assert type_ in ('token', 'token_with_mods', 'rule', 'option', 'fragment'), "Can't handle type %s"%type_
             handler = getattr(self, '_add_%s' % type_)
             handler(name, defin)
 
         # -- Build lexer --
-        lexer = lex.lex(module=self._callback, reflags=re.UNICODE)
+        lexer = lex.lex(module=self.parser_engine._callback, reflags=re.UNICODE)
         lexer = LexerWrapper(lexer, newline_tokens_names=self._newline_tokens, newline_char=self._newline_value, ignore_token_names=self._ignore_tokens)
         if self.lexer_postproc and not self.ignore_postproc:
             lexer = self.lexer_postproc(lexer)  # apply wrapper
@@ -690,7 +717,7 @@ class _Grammar(object):
 
         # -- Build Parser --
         if not self.just_lex:
-            self.parser = yacc.yacc(module=self._callback, debug=self.debug, tabmodule=tab_filename, errorlog=grammar_logger, outputdir=PLYPLUS_DIR)
+            self.parser = yacc.yacc(module=self.parser_engine._callback, debug=self.debug, tabmodule=tab_filename, errorlog=grammar_logger, outputdir=PLYPLUS_DIR)
 
     def __repr__(self):
         return '<Grammar from %s, tab at %s>' % (self.source_name, self.tab_filename)
@@ -801,9 +828,9 @@ class _Grammar(object):
                         return t
                     t_token.__doc__ = token_value
 
-                    setattr(self._callback, 't_%s' % (name,), t_token.__get__(self))
+                    setattr(self.parser_engine._callback, 't_%s' % (name,), t_token.__get__(self))
 
-                    self._callback.tokens.append(name)
+                    self.parser_engine._callback.tokens.append(name)
                     token_added = True
 
                 elif mod == '%newline':
@@ -819,8 +846,8 @@ class _Grammar(object):
             raise GrammarException("Unknown token feature: %s" % token_features.head)
 
         if not token_added:
-            self._callback.tokens.append(name)
-            setattr(self._callback, 't_%s'%name, token_value)
+            self.parser_engine._callback.tokens.append(name)
+            setattr(self.parser_engine._callback, 't_%s'%name, token_value)
 
     def _add_token(self, name, token_value):
         assert isinstance(token_value, StringTypes), token_value
@@ -835,8 +862,6 @@ class _Grammar(object):
             self.rules_to_expand.add( rule_name )
         elif RuleMods.FLATTEN in mods:
             self.rules_to_flatten.add( rule_name )
-
-        rule_def = '%s\t: %s'%(rule_name, '\n\t| '.join(rule_def))
 
         def p_rule(_, p):
             subtree = []
@@ -863,21 +888,8 @@ class _Grammar(object):
                 p[0] = subtree[0]
             else:
                 p[0] = self.tree_class(rule_name, subtree, skip_adjustments=True)
-        p_rule.__doc__ = rule_def
-        setattr(self._callback, 'p_%s' % (rule_name,), types.MethodType(p_rule, self))
+
+        self.parser_engine.add_rule(rule_name, rule_def, p_rule)
 
 
-    # TODO: move to callback
-    def p_error(self, p):
-        if p:
-            if isinstance(p.value, TokValue):
-                msg = "Syntax error in input at '%s' (type %s) line %s col %s" % (p.value, p.type, p.value.line, p.value.column)
-            else:
-                msg = "Syntax error in input at '%s' (type %s) line %s" % (p.value, p.type, p.lineno)
-        else:
-            msg = "Syntax error in input (details unknown): %s" % p
 
-        if self.debug:
-            print(msg)
-
-        self.errors.append(msg)
