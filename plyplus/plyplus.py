@@ -656,9 +656,51 @@ class ParserEngine_Ply(object):
         # self.errors.append(msg)
 
     def build_parser(self, tab_filename):
-        parser = yacc.yacc(module=self._callback, debug=self.debug, tabmodule=tab_filename, errorlog=grammar_logger, outputdir=PLYPLUS_DIR)
-        return parser
+        self.parser = yacc.yacc(module=self._callback, debug=self.debug, tabmodule=tab_filename, errorlog=grammar_logger, outputdir=PLYPLUS_DIR)
 
+    def parse(self, text, lexer):
+        return self.parser.parse(text, lexer=lexer, debug=self.debug)
+
+class Callback_Lark(object):
+    def default(self, rule, *args):
+        return (rule, args)
+
+from collections import defaultdict
+class ParserEngine_Lark(object):
+    def __init__(self, debug):
+        self._callback = Callback_Lark()
+        self._callback.tokens = []    # for lex module
+
+        self.debug = debug
+
+        self._grammar = {}
+
+    def add_rule(self, name, rule_def, callback_func):
+        assert name not in self._grammar
+        self._grammar[name] = rule_def
+        setattr(self._callback, 'p_%s' % (name,), types.MethodType(callback_func, self))
+
+    def build_parser(self, tab_filename):
+        import sys
+        sys.path.append('/home/erez/lark')
+        import lark
+
+        g = lark.Grammar(self._grammar)
+        self.parser = lark.Parser(g, self._callback)
+
+    def parse(self, text, lexer):
+        import sys
+        sys.path.append('/home/erez/lark')
+        import lark
+
+        l = []
+        lexer.input(text)
+        x = lexer.token()
+        while x is not None:
+            l.append( lark.Symbol(x.type, x.value) )
+            x = lexer.token()
+
+        return self.parser.parse(l)
 
 class _Grammar(object):
     def __init__(self, grammar_tree, source_name, tab_filename, **options):
@@ -705,7 +747,8 @@ class _Grammar(object):
             exec_code = compile(src_code, source_name, 'exec')
             exec(exec_code, locals())
 
-        self.parser_engine = ParserEngine_Ply(self.debug)
+        # self.parser_engine = ParserEngine_Ply(self.debug)
+        self.parser_engine = ParserEngine_Lark(self.debug)
 
         for type_, (name, defin) in grammar_list:
             assert type_ in ('token', 'token_with_mods', 'rule', 'option', 'fragment'), "Can't handle type %s"%type_
@@ -721,7 +764,7 @@ class _Grammar(object):
 
         # -- Build Parser --
         if not self.just_lex:
-            self.parser = self.parser_engine.build_parser(tab_filename=tab_filename)
+            self.parser_engine.build_parser(tab_filename=tab_filename)
 
     def __repr__(self):
         return '<Grammar from %s, tab at %s>' % (self.source_name, self.tab_filename)
@@ -740,7 +783,7 @@ class _Grammar(object):
         assert not self.just_lex
 
         self.errors = []
-        tree = self.parser.parse(text, lexer=self.lexer, debug=self.debug)
+        tree = self.parser_engine.parse(text, lexer=self.lexer)
         if not tree:
             self.errors.append("Could not create parse tree!")
         if self.errors:
@@ -867,9 +910,9 @@ class _Grammar(object):
         elif RuleMods.FLATTEN in mods:
             self.rules_to_flatten.add( rule_name )
 
-        def p_rule(_, p):
+        def p_rule(_, *args):
             subtree = []
-            for child in p.__getslice__(1, None):
+            for child in args[1:]:
                 if isinstance(child, self.tree_class) and (
                            (                            child.head in self.rules_to_expand )
                         or (child.head == rule_name and child.head in self.rules_to_flatten)
@@ -889,9 +932,9 @@ class _Grammar(object):
 
             if len(subtree) == 1 and (RuleMods.EXPAND in mods or RuleMods.EXPAND1 in mods):
                 # Self-expansion: only perform on EXPAND and EXPAND1 rules
-                p[0] = subtree[0]
+                return subtree[0]
             else:
-                p[0] = self.tree_class(rule_name, subtree, skip_adjustments=True)
+                return self.tree_class(rule_name, subtree, skip_adjustments=True)
 
         self.parser_engine.add_rule(rule_name, rule_def, p_rule)
 
