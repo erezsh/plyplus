@@ -44,6 +44,9 @@ class TestPythonG(unittest.TestCase):
 
         g.parse("c,d=x,y=a+b\nc,d=a,b\n")
 
+    def test_basic2(self):
+        self.g.parse(_read('python_sample3.py'))
+
     def test_weird_stuff(self):
         g = self.g
         for n in range(3):

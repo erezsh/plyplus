@@ -700,7 +700,10 @@ class ParserEngine_Lark(object):
             l.append( lark.Symbol(x.type, x.value) )
             x = lexer.token()
 
-        return self.parser.parse(l)
+        try:
+            return self.parser.parse(l)
+        except lark.ParseError, e:
+            raise ParseError(e)
 
 class _Grammar(object):
     def __init__(self, grammar_tree, source_name, tab_filename, **options):
