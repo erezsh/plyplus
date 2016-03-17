@@ -17,7 +17,7 @@ except ImportError:
 from ply import lex, yacc
 
 from . import __version__, PLYPLUS_DIR, grammar_parser
-from .utils import StringTypes, StringType
+from .utils import StringTypes
 
 from .strees import STree, SVisitor, STransformer, is_stree, SVisitor_Recurse, Str
 
@@ -115,13 +115,34 @@ _TOKEN_NAMES = {
 def get_token_name(token, default):
     return _TOKEN_NAMES.get( token, default)
 
+class ErrorMsg(object):
+    MESSAGE = u"{msg}"
+
+    def __init__(self, **kw):
+        self.args = kw
+
+    def __str__(self):
+        return self.MESSAGE.format(**self.args)
+
+class SyntaxErrorMsg_Unknown(ErrorMsg):
+    MESSAGE = u"Syntax error in input (details unknown)"
+
+class SyntaxErrorMsg_Line(ErrorMsg):
+    MESSASGE = u"Syntax error in input at '{value}' (type {type}) line {line}"
+
+class SyntaxErrorMsg_LineCol(ErrorMsg):
+    MESSAGE = u"Syntax error in input at '{value}' (type {type}) line {line} col {col}"
+
 class PlyplusException(Exception): pass
 
 class GrammarException(PlyplusException): pass
 
 class TokenizeError(PlyplusException): pass
 
-class ParseError(PlyplusException): pass
+class ParseError(PlyplusException):
+    def __init__(self, errors):
+        self.errors = errors
+        super(ParseError, self).__init__(u'\n'.join(map(unicode, self.errors)))
 
 class RuleMods(object):
     EXPAND = '@'    # Expand all instances of rule
@@ -711,9 +732,9 @@ class _Grammar(object):
         self.errors = []
         tree = self.parser.parse(text, lexer=self.lexer, debug=self.debug)
         if not tree:
-            self.errors.append("Could not create parse tree!")
+            self.errors.append(ErrorMsg(msg="Could not create parse tree!"))
         if self.errors:
-            raise ParseError('\n'.join(self.errors))
+            raise ParseError(self.errors)
 
         if self.subgrammars:
             ApplySubgrammars_Visitor(self.subgrammars).visit(tree)
@@ -871,13 +892,13 @@ class _Grammar(object):
     def p_error(self, p):
         if p:
             if isinstance(p.value, TokValue):
-                msg = "Syntax error in input at '%s' (type %s) line %s col %s" % (p.value, p.type, p.value.line, p.value.column)
+                err = SyntaxErrorMsg_LineCol(value=p.value, type=p.type, line=p.value.line, col=p.value.column)
             else:
-                msg = "Syntax error in input at '%s' (type %s) line %s" % (p.value, p.type, p.lineno)
+                err = SyntaxErrorMsg_Line(value=p.value, type=p.type, line=p.lineno)
         else:
-            msg = "Syntax error in input (details unknown): %s" % p
+            err = SyntaxErrorMsg_Unknown()
 
         if self.debug:
-            print(msg)
+            print(err)
 
-        self.errors.append(msg)
+        self.errors.append(err)
