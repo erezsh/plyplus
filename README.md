@@ -1,6 +1,6 @@
 # PlyPlus - a friendly yet powerful LR-parser in Python.
 
-Plyplus is a general-purpose parser built on top of [PLY](http://www.dabeaz.com/ply/), written in python, with a slightly different approach to parsing.
+Plyplus is a general-purpose parser built on top of [PLY](http://www.dabeaz.com/ply/) (LALR(1)), and written in Python. Plyplus features a modern design, and focuses on simplicity without losing power.
 
 ## Main Concepts
 
@@ -49,9 +49,40 @@ Learn how to query the AST using [selectors](/docs/selectors.md)
 
 ## Examples
 
-This section contains examples of plyplus usage. For a better explanation, check out [the tutorial](/docs/tutorial.md). If something is still not clear, feel free to email me and ask!
+PlyPlus offers benefits both for writing grammars, and for working with their resulting AST. The examples address both of these.
 
-### Parsing Python
+### Calc
+
+A calculator is a bit like the "hello world" of parsers. Here is how calc.g might look:
+
+    start: add;
+
+    // Rules
+    ?add: (add add_symbol)? mul;
+    ?mul: (mul mul_symbol)? atom;
+    @atom: neg | number | '\(' add '\)';
+    neg: '-' atom;
+
+    // Tokens
+    number: '[\d.]+';
+    mul_symbol: '\*' | '/';
+    add_symbol: '\+' | '-';
+
+    WS: '[ \t]+' (%ignore);
+
+This is all we need to get an AST. Now we can write:
+
+    >>> import plyplus
+    >>> plyplus.Grammar("calc.g").parse("(1 + 2) * -3")
+    start(mul(add(number(u'1'), add_symbol(u'+'), number(u'2')), mul_symbol(u'*'), neg(number(u'3'))))
+
+Notice that "atom" doesn't appear in the AST. That is because we muted it with the "@" prefix. Same was done with "add" and "mul" using the "?" prefix, which only mutes if the parser matches just one item.
+
+To learn how to evaluate this AST into a solution, check out the simple [Calculator Example](/examples/calc.py).
+
+For a more thorough explanation of grammars, check out [the tutorial](/docs/tutorial.md). If something is still not clear, feel free to email me and ask!
+
+### Working with the Python AST (using the builtin python grammar)
 
 We'll use Plyplus' grammar for Python, and play with os.py for a bit (though it could be any Python file).
 
@@ -91,7 +122,7 @@ Hard to read? Try looking at it visually! (requires pydot)
 
 ![calling\_popen.png](/docs/calling_popen.png)
 
-### Parsing INI files
+### Working with INI-files (using the builtin config grammar)
 
 INI files are too open-handed to be a good candidate for LR-parsing, but PlyPlus can handle them using nested grammars. By parsing different elements separately, a "]" symbol can be both a special token and just part of the text, all in the same file.
 

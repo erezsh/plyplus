@@ -7,11 +7,13 @@ from plyplus import Grammar, STransformer
 calc_grammar = Grammar("""
     start: add;
 
+    // Rules
     ?add: (add add_symbol)? mul;
     ?mul: (mul mul_symbol)? atom;
     @atom: neg | number | '\(' add '\)';
     neg: '-' atom;
 
+    // Tokens
     number: '[\d.]+';
     mul_symbol: '\*' | '/';
     add_symbol: '\+' | '-';
