@@ -252,14 +252,6 @@ class NameAnonymousTokens_Visitor(SVisitor):
 
 
 class SimplifyGrammar_Visitor(SVisitor_Recurse):
-    ANON_RULE_ID = 'anon'
-
-    def __init__(self):
-        self._count = itertools.count()
-        self._rules_to_add = []
-
-    def _get_new_rule_name(self):
-        return '_%s_%d' % (self.ANON_RULE_ID, next(self._count))
 
     @staticmethod
     def _flatten(tree):
@@ -273,49 +265,6 @@ class SimplifyGrammar_Visitor(SVisitor_Recurse):
         # visit until nothing left to change (not the most efficient, but good enough since it's only the grammar)
         while SVisitor_Recurse._visit(self, tree):
             pass
-
-    def grammar(self, tree):
-        changed = self._flatten(tree)
-
-        if self._rules_to_add:
-            changed = True
-            tree.tail += self._rules_to_add
-            self._rules_to_add = []
-        return changed
-
-    def _add_recurse_rule(self, mod, name, repeated_expr):
-        new_rule = STree('ruledef', [mod+name, STree('rules_list', [STree('rule', [repeated_expr]), STree('rule', [name, repeated_expr])]) ])
-        self._rules_to_add.append(new_rule)
-        return new_rule
-
-    def oper(self, tree):
-        rule_operand, operator = tree.tail
-
-        if operator == '*':
-            # a : b c* d;
-            #  --> in theory
-            # a : b _c d;
-            # _c : c _c |;
-            #  --> in practice (much faster with PLY, approx x2)
-            # a : b _c d | b d;
-            # _c : _c c | c;
-            new_name = self._get_new_rule_name() + '_star'
-            self._add_recurse_rule(RuleMods.EXPAND, new_name, rule_operand)
-            tree.head, tree.tail = 'rules_list', [STree('rule', [new_name]), STree('rule', [])]
-        elif operator == '+':
-            # a : b c+ d;
-            #  -->
-            # a : b _c d;
-            # _c : _c c | c;
-            new_name = self._get_new_rule_name() + '_plus'
-            self._add_recurse_rule(RuleMods.EXPAND, new_name, rule_operand)
-            tree.head, tree.tail = 'rule', [new_name]
-        elif operator == '?':
-            tree.head, tree.tail = 'rules_list', [rule_operand, STree('rule', [])]
-        else:
-            assert False, rule_operand
-
-        return True # changed
 
     def rule(self, tree):
         # rules_list unpacking
@@ -350,6 +299,67 @@ class SimplifyGrammar_Visitor(SVisitor_Recurse):
                 return True # changed
 
         return changed # Not changed
+
+
+    modtokenlist = _flatten
+    tokenmods = _flatten
+    tokenvalue = _flatten
+    number_list = _flatten
+    rules_list = _flatten
+    perm_phrase = _flatten
+    grammar = _flatten
+
+
+class ExpandOper_Visitor(SimplifyGrammar_Visitor):
+    ANON_RULE_ID = 'anon'
+
+    def __init__(self):
+        self._count = itertools.count()
+        self._rules_to_add = []
+
+    def _get_new_rule_name(self):
+        return '_%s_%d' % (self.ANON_RULE_ID, next(self._count))
+
+    def grammar(self, tree):
+        if self._rules_to_add:
+            changed = True
+            tree.tail += self._rules_to_add
+            self._rules_to_add = []
+            return True
+        return False
+
+    def _add_recurse_rule(self, mod, name, repeated_expr):
+        new_rule = STree('ruledef', [mod+name, STree('rules_list', [STree('rule', [repeated_expr]), STree('rule', [name, repeated_expr])]) ])
+        self._rules_to_add.append(new_rule)
+
+    def oper(self, tree):
+        rule_operand, operator = tree.tail
+
+        if operator == '*':
+            # a : b c* d;
+            #  --> in theory
+            # a : b _c d;
+            # _c : c _c |;
+            #  --> in practice (much faster with PLY, approx x2)
+            # a : b _c d | b d;
+            # _c : _c c | c;
+            new_name = self._get_new_rule_name() + '_star'
+            self._add_recurse_rule(RuleMods.EXPAND, new_name, rule_operand)
+            tree.head, tree.tail = 'rules_list', [STree('rule', [new_name]), STree('rule', [])]
+        elif operator == '+':
+            # a : b c+ d;
+            #  -->
+            # a : b _c d;
+            # _c : _c c | c;
+            new_name = self._get_new_rule_name() + '_plus'
+            self._add_recurse_rule(RuleMods.EXPAND, new_name, rule_operand)
+            tree.head, tree.tail = 'rule', [new_name]
+        elif operator == '?':
+            tree.head, tree.tail = 'rules_list', [rule_operand, STree('rule', [])]
+        else:
+            assert False, rule_operand
+
+        return True # changed
 
     def perm_rule(self, tree):
         """ Transforms a permutation rule into a rules_list of the permutations.
@@ -400,14 +410,6 @@ class SimplifyGrammar_Visitor(SVisitor_Recurse):
                 tail.append(rule)
             tree.tail = tail
         return True
-
-    modtokenlist = _flatten
-    tokenmods = _flatten
-    tokenvalue = _flatten
-    number_list = _flatten
-    rules_list = _flatten
-    perm_phrase = _flatten
-
 
 
 class GrammarTreeToList_Transformer(STransformer):
@@ -680,6 +682,7 @@ class _Grammar(object):
         self.subgrammars = {}
         ExtractSubgrammars_Visitor(source_name, tab_filename, self.options).visit(grammar_tree)
         SimplifyGrammar_Visitor().visit(grammar_tree)
+        ExpandOper_Visitor().visit(grammar_tree)
         tokendefs = SimplifyTokenDefs_Visitor().visit(grammar_tree)
         NameAnonymousTokens_Visitor(tokendefs).visit(grammar_tree)
         grammar_list_and_code = GrammarTreeToList_Transformer().transform(grammar_tree)
