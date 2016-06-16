@@ -165,7 +165,7 @@ class ExtractSubgrammars_Visitor(SVisitor):
         assert len(tree.tail) == 1
         source_name = '%s:%s' % (self.parent_source_name, self.last_tok.lower())
         tab_filename = '%s_%s' % (self.parent_tab_filename, self.last_tok.lower())
-        subgrammar = _Grammar(tree.tail[0], source_name, tab_filename, **self.parent_options)
+        subgrammar = _Grammar(tree.tail[0], source_name, tab_filename, self.parent_options)
         tree.head, tree.tail = 'subgrammarobj', [subgrammar]
 
 class ApplySubgrammars_Visitor(SVisitor):
@@ -547,8 +547,45 @@ class LexerWrapper(object):
             self._lexer_pos_of_start_column = t.lexpos + t.value.rindex(self.newline_char)
 
 
+class GrammarOptions(object):
+    """Specifies the options for PlyPlus
+
+    Commonly-used Options:
+        debug - Affects verbosity (default: False)
+        just_lex - Don't build a parser. Useful for debugging (default: False)
+        auto_filter_tokens - Automagically remove "punctuation" tokens (default: True)
+        cache_grammar - Cache the PlyPlus grammar (PLY caches regardless of this. Default: False)
+        ignore_postproc - Don't call the post-processing function (default: False)
+
+    Read the GrammarOptions class for more details.
+    """
+    def __init__(self, options_dict):
+        o = dict(options_dict)
+
+        self.debug = bool(o.pop('debug', False))
+        self.just_lex = bool(o.pop('just_lex', False))
+        self.auto_filter_tokens = bool(o.pop('auto_filter_tokens', True))
+        self.keep_empty_trees = bool(o.pop('keep_empty_trees', True))
+        self.tree_class = o.pop('tree_class', STree)
+        self.cache_grammar = o.pop('cache_grammar', False)
+        self.ignore_postproc = bool(o.pop('ignore_postproc', False))
+
+        if o:
+            raise ValueError("Unknown options: %s" % o.keys())
+
+
 class Grammar(object):
+    """Grammar object. Provides the main interface to PlyPlus.
+    """
+
     def __init__(self, grammar, **options):
+        """
+            grammar : a string or file-object containing the grammar spec
+                      (using plyplus' bnf syntax)
+            options : a dictionary controlling various aspects of plyplus.
+                      """
+        options = GrammarOptions(options)
+
         # Some, but not all file-like objects have a 'name' attribute
         try:
             source = grammar.name
@@ -569,8 +606,7 @@ class Grammar(object):
 
         assert isinstance(grammar, StringTypes)
 
-        cache_grammar = options.pop('cache_grammar', False)
-        if cache_grammar:
+        if options.cache_grammar:
             plyplus_cache_filename = PLYPLUS_DIR + '/%s-%s-%s.plyplus' % (tab_filename, hashlib.sha256(grammar).hexdigest(), __version__)
             if os.path.exists(plyplus_cache_filename):
                 with open(plyplus_cache_filename, 'rb') as f:
@@ -583,19 +619,23 @@ class Grammar(object):
         else:
             self._grammar = self._create_grammar(grammar, source, tab_filename, options)
 
+
     @staticmethod
     def _create_grammar(grammar, source, tab_filename, options):
         grammar_tree = grammar_parser.parse(grammar)
         if not grammar_tree:
             raise GrammarException("Parse Error: Could not create grammar")
 
-        return _Grammar(grammar_tree, source, tab_filename, **options)
+        return _Grammar(grammar_tree, source, tab_filename, options)
 
     def lex(self, text):
         return self._grammar.lex(text)
 
     def parse(self, text):
         return self._grammar.parse(text)
+
+    __init__.__doc__ += GrammarOptions.__doc__
+
 
 class GrammarVerifier(SVisitor):
     def __init__(self):
@@ -640,30 +680,12 @@ class GrammarVerifier(SVisitor):
             raise ParseError("Undefined rules: %s" % undefined_rules)
 
 
-class _Callback(object):
-    start = "start"
-
-    @staticmethod
-    def t_error(t):
-        raise TokenizeError("Illegal character in input: '%s', line: %s, %s" % (t.value[:32], t.lineno, t.type))
-
-    p_error = NotImplemented
-
 
 class _Grammar(object):
-    def __init__(self, grammar_tree, source_name, tab_filename, **options):
+    def __init__(self, grammar_tree, source_name, tab_filename, options):
         GrammarVerifier().verify(grammar_tree)
 
-        self.options = dict(options)
-        self.debug = bool(options.pop('debug', False))
-        self.just_lex = bool(options.pop('just_lex', False))
-        self.ignore_postproc = bool(options.pop('ignore_postproc', False))
-        self.auto_filter_tokens = bool(options.pop('auto_filter_tokens', True))
-        self.keep_empty_trees = bool(options.pop('keep_empty_trees', True))
-        self.tree_class = options.pop('tree_class', STree)
-
-        if options:
-            raise TypeError("Unknown options: %s"%options.keys())
+        self.options = options
 
         self.tab_filename = tab_filename
         self.source_name = source_name
@@ -674,9 +696,7 @@ class _Grammar(object):
         self.lexer_postproc = None
         self._newline_value = '\n'
 
-        self._callback = _Callback()
-        self._callback.tokens = []    # for lex module
-        self._callback.p_error = self.p_error
+        self.engine = Engine_PLY(self.options, self.rules_to_flatten, self.rules_to_expand)
 
         # -- Build Grammar --
         self.subgrammars = {}
@@ -706,43 +726,38 @@ class _Grammar(object):
             handler(name, defin)
 
         # -- Build lexer --
-        lexer = lex.lex(module=self._callback, reflags=re.UNICODE)
-        lexer = LexerWrapper(lexer, newline_tokens_names=self._newline_tokens, newline_char=self._newline_value, ignore_token_names=self._ignore_tokens)
-        if self.lexer_postproc and not self.ignore_postproc:
+        self.engine.build_lexer()
+        lexer = LexerWrapper(self.engine.lexer, newline_tokens_names=self._newline_tokens, newline_char=self._newline_value, ignore_token_names=self._ignore_tokens)
+        if self.lexer_postproc and not self.options.ignore_postproc:
             lexer = self.lexer_postproc(lexer)  # apply wrapper
-        self.lexer = lexer
+        self.engine.lexer = lexer
 
         # -- Build Parser --
-        if not self.just_lex:
-            self.parser = yacc.yacc(module=self._callback, debug=self.debug, tabmodule=tab_filename, errorlog=grammar_logger, outputdir=PLYPLUS_DIR)
+        if not self.options.just_lex:
+            self.engine.build_parser(cache_file=tab_filename)
 
     def __repr__(self):
         return '<Grammar from %s, tab at %s>' % (self.source_name, self.tab_filename)
 
     def lex(self, text):
         "Performs tokenizing as a generator"
-        self.lexer.input(text)
+        self.engine.lexer.input(text)
         while True:
-            tok = self.lexer.token()
+            tok = self.engine.lexer.token()
             if not tok:
                 break
             yield tok
 
     def parse(self, text):
         "Parse the text into an AST"
-        assert not self.just_lex
+        assert not self.options.just_lex
 
-        self.errors = []
-        tree = self.parser.parse(text, lexer=self.lexer, debug=self.debug)
-        if not tree:
-            self.errors.append(ErrorMsg(msg="Could not create parse tree!"))
-        if self.errors:
-            raise ParseError(self.errors)
+        tree = self.engine.parse(text)
 
         if self.subgrammars:
             ApplySubgrammars_Visitor(self.subgrammars).visit(tree)
 
-        SimplifySyntaxTree_Visitor(self.rules_to_flatten, self.rules_to_expand, self.keep_empty_trees).visit(tree)
+        SimplifySyntaxTree_Visitor(self.rules_to_flatten, self.rules_to_expand, self.options.keep_empty_trees).visit(tree)
 
         return tree
 
@@ -816,18 +831,8 @@ class _Grammar(object):
 
                     unless_toks_dict, unless_toks_regexps = self._extract_unless_tokens(modtokenlist)
 
-                    def t_token(self, t):
-                        t.type = unless_toks_dict.get(t.value, name)
-                        for regexp, tokname in unless_toks_regexps:
-                            if regexp.match(t.value):
-                                t.type = tokname
-                                break
-                        return t
-                    t_token.__doc__ = token_value
+                    self.engine.add_token_unless(name, token_value, unless_toks_dict, unless_toks_regexps)
 
-                    setattr(self._callback, 't_%s' % (name,), t_token.__get__(self))
-
-                    self._callback.tokens.append(name)
                     token_added = True
 
                 elif mod == '%newline':
@@ -843,8 +848,7 @@ class _Grammar(object):
             raise GrammarException("Unknown token feature: %s" % token_features.head)
 
         if not token_added:
-            self._callback.tokens.append(name)
-            setattr(self._callback, 't_%s'%name, token_value)
+            self.engine.add_token(name, token_value)
 
     def _add_token(self, name, token_value):
         assert isinstance(token_value, StringTypes), token_value
@@ -860,12 +864,42 @@ class _Grammar(object):
         elif RuleMods.FLATTEN in mods:
             self.rules_to_flatten.add( rule_name )
 
+        self_expand = (RuleMods.EXPAND in mods or RuleMods.EXPAND1 in mods)
+        self.engine.add_rule(rule_name, rule_def, self_expand)
+
+
+
+
+class Engine_PLY_Callback(object):
+    start = "start"
+
+    def __init__(self):
+        self.tokens = []
+
+    @staticmethod
+    def t_error(t):
+        raise TokenizeError("Illegal character in input: '%s', line: %s, %s" % (t.value[:32], t.lineno, t.type))
+
+    p_error = NotImplemented
+
+class Engine_PLY(object):
+    def __init__(self, options, rules_to_flatten, rules_to_expand):
+        self.rules_to_flatten = rules_to_flatten
+        self.rules_to_expand = rules_to_expand
+        self.options = options
+
+        self.callback = Engine_PLY_Callback()
+        self.callback.p_error = self.p_error
+
+    def add_rule(self, rule_name, rule_def, self_expand):
         rule_def = '%s\t: %s'%(rule_name, '\n\t| '.join(rule_def))
+        tree_class = self.options.tree_class
+        auto_filter_tokens = self.options.auto_filter_tokens
 
         def p_rule(_, p):
             subtree = []
             for child in p.__getslice__(1, None):
-                if isinstance(child, self.tree_class) and (
+                if isinstance(child, tree_class) and (
                            (                            child.head in self.rules_to_expand )
                         or (child.head == rule_name and child.head in self.rules_to_flatten)
                         ):
@@ -879,20 +913,57 @@ class _Grammar(object):
                     subtree.append(child)
 
             # Apply auto-filtering (remove 'punctuation' tokens)
-            if self.auto_filter_tokens and len(subtree) != 1:
+            if auto_filter_tokens and len(subtree) != 1:
                 subtree = list(filter(is_stree, subtree))
 
-            if len(subtree) == 1 and (RuleMods.EXPAND in mods or RuleMods.EXPAND1 in mods):
+            if len(subtree) == 1 and self_expand:
                 # Self-expansion: only perform on EXPAND and EXPAND1 rules
                 p[0] = subtree[0]
             else:
-                p[0] = self.tree_class(rule_name, subtree, skip_adjustments=True)
+                p[0] = tree_class(rule_name, subtree, skip_adjustments=True)
         p_rule.__doc__ = rule_def
-        setattr(self._callback, 'p_%s' % (rule_name,), types.MethodType(p_rule, self))
+        setattr(self.callback, 'p_%s' % (rule_name,), types.MethodType(p_rule, self))
+
+    def add_token(self, name, value):
+        self.callback.tokens.append(name)
+        setattr(self.callback, 't_%s'%name, value)
 
 
-    # TODO: move to callback
+    def add_token_unless(self, name, value, unless_toks_dict, unless_toks_regexps):
+        def t_token(t):
+            if t.value in unless_toks_dict:
+                t.type = unless_toks_dict[t.value]
+            else:
+                t.type = name
+                for regexp, tokname in unless_toks_regexps:
+                    if regexp.match(t.value):
+                        t.type = tokname
+                        break
+            return t
+        t_token.__doc__ = value
+
+        self.add_token(name, t_token)
+
+
+    def build_lexer(self):
+        self.lexer = lex.lex(module=self.callback, reflags=re.UNICODE)
+
+    def build_parser(self, cache_file):
+        self.parser = yacc.yacc(module=self.callback, debug=self.options.debug, tabmodule=cache_file, errorlog=grammar_logger, outputdir=PLYPLUS_DIR)
+
+    def parse(self, text):
+        self.errors = []
+        tree = self.parser.parse(text, lexer=self.lexer, debug=self.options.debug)
+        if not tree:
+            self.errors.append(ErrorMsg(msg="Could not create parse tree!"))
+        if self.errors:
+            raise ParseError(self.errors)
+
+        return tree
+
+
     def p_error(self, p):
+        # TODO: Move to callback?
         if p:
             if isinstance(p.value, TokValue):
                 err = SyntaxErrorMsg_LineCol(value=p.value, type=p.type, line=p.value.line, col=p.value.column)
@@ -901,7 +972,7 @@ class _Grammar(object):
         else:
             err = SyntaxErrorMsg_Unknown()
 
-        if self.debug:
+        if self.options.debug:
             print(err)
 
         self.errors.append(err)
