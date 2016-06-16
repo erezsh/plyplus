@@ -1,4 +1,5 @@
 import functools
+import itertools
 
 try:
     # Python 2.6
@@ -30,3 +31,9 @@ def _cache_0args(obj):
         return _cache[_id]
     return memoizer
 
+
+def sum_list(l):
+    return list(itertools.chain(*l))
+
+def list_join(lst, sep):
+    return sum_list([sep,j] for j in lst)[1:]

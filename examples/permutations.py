@@ -12,7 +12,7 @@ c : 'c' ;
 WS: '[ \t]+' (%ignore);
 """)
 
-print perm1.parse(' c b a').pretty()
+print perm1.parse(' a c b').pretty()
 print perm1.parse('c a ').pretty()
 
 # Permutations with a separator

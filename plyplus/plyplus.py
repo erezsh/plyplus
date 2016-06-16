@@ -17,7 +17,7 @@ except ImportError:
 from ply import lex, yacc
 
 from . import __version__, PLYPLUS_DIR, grammar_parser
-from .utils import StringTypes
+from .utils import StringTypes, list_join
 
 from .strees import STree, SVisitor, STransformer, is_stree, SVisitor_Recurse, Str
 
@@ -253,6 +253,12 @@ class NameAnonymousTokens_Visitor(SVisitor):
 
 class SimplifyGrammar_Visitor(SVisitor_Recurse):
 
+    def _visit(self, tree):
+        "_visit simplifies the tree as much as possible"
+        # visit until nothing left to change (not the most efficient, but good enough since it's only the grammar)
+        while SVisitor_Recurse._visit(self, tree):
+            pass
+
     @staticmethod
     def _flatten(tree):
         to_expand = [i for i, subtree in enumerate(tree.tail) if is_stree(subtree) and subtree.head == tree.head]
@@ -260,11 +266,6 @@ class SimplifyGrammar_Visitor(SVisitor_Recurse):
             tree.expand_kids_by_index(*to_expand)
         return bool(to_expand)
 
-    def _visit(self, tree):
-        "_visit simplifies the tree as much as possible"
-        # visit until nothing left to change (not the most efficient, but good enough since it's only the grammar)
-        while SVisitor_Recurse._visit(self, tree):
-            pass
 
     def rule(self, tree):
         # rules_list unpacking
@@ -283,22 +284,16 @@ class SimplifyGrammar_Visitor(SVisitor_Recurse):
         if self._flatten(tree):
             changed = True
 
-        for i, child in enumerate(tree.tail):
-            if is_stree(child) and child.head == 'rules_list':
+        for i, rules_list in enumerate(tree.tail):
+            if is_stree(rules_list) and rules_list.head == 'rules_list':
                 # found. now flatten
-                new_rules_list = []
-                for option in child.tail:
-                    new_rules_list.append(STree('rule', []))
-                    # for each rule in rules_list
-                    for j, child2 in enumerate(tree.tail):
-                        if j == i:
-                            new_rules_list[-1].tail.append(option)
-                        else:
-                            new_rules_list[-1].tail.append(child2)
-                tree.head, tree.tail = 'rules_list', new_rules_list
+                tree.head = 'rules_list'
+                tree.tail = [STree('rule', [list_item if i==j else other
+                                            for j, other in enumerate(tree.tail)])
+                             for list_item in rules_list.tail ]
                 return True # changed
 
-        return changed # Not changed
+        return changed
 
 
     modtokenlist = _flatten
@@ -391,25 +386,16 @@ class ExpandOper_Visitor(SimplifyGrammar_Visitor):
               | a Z c     | c Z a
         """
         rules = tree.tail[0].tail
-        has_sep = len(tree.tail) == 2
-        sep = tree.tail[1] if has_sep else None
-        tail = []
-        for rule_perm in itertools.permutations(rules):
-            rule = STree('rule', rule_perm)
-            self._visit(rule)
-            tail.append(rule)
-        tree.head, tree.tail = 'rules_list', tail
+        sep = tree.tail[1] if len(tree.tail) == 2 else None
+        tree.head = 'rules_list'
+        tree.tail = [STree('rule', rule_perm) for rule_perm in itertools.permutations(rules)]
         self._visit(tree)
         tree.tail = list(set(tree.tail))
-        if has_sep:
-            tail = []
-            for rule in tree.tail:
-                rule = [ i for i in itertools.chain.from_iterable([[sep,j]for j in rule.tail])][1:]
-                rule = STree('rule', rule)
-                self._visit(rule)
-                tail.append(rule)
-            tree.tail = tail
+        if sep:
+            tree.tail = [STree('rule', list_join(rule.tail, sep))
+                         for rule in tree.tail]
         return True
+
 
 
 class GrammarTreeToList_Transformer(STransformer):
