@@ -2,8 +2,8 @@
 
 from __future__ import absolute_import
 
-import re, os
-import types
+import re
+import os
 import itertools
 import logging
 import ast
@@ -14,12 +14,13 @@ try:
 except ImportError:
     import pickle
 
-from ply import lex, yacc
-
 from . import __version__, PLYPLUS_DIR, grammar_parser
 from .utils import StringTypes, list_join
+from .common import TokValue, GrammarException, ParseError
 
-from .strees import STree, SVisitor, STransformer, is_stree, SVisitor_Recurse, Str
+from .strees import STree, SVisitor, STransformer, is_stree, SVisitor_Recurse
+
+from .engine_ply import Engine_PLY
 
 # -- Must!
 #TODO: Support States
@@ -75,8 +76,6 @@ from .strees import STree, SVisitor, STransformer, is_stree, SVisitor_Recurse, S
 #
 
 logging.basicConfig()
-grammar_logger = logging.getLogger('Grammar')
-grammar_logger.setLevel(logging.ERROR)
 
 
 _TOKEN_NAMES = {
@@ -115,34 +114,6 @@ _TOKEN_NAMES = {
 def get_token_name(token, default):
     return _TOKEN_NAMES.get( token, default)
 
-class ErrorMsg(object):
-    MESSAGE = u"{msg}"
-
-    def __init__(self, **kw):
-        self.args = kw
-
-    def __str__(self):
-        return self.MESSAGE.format(**self.args)
-
-class SyntaxErrorMsg_Unknown(ErrorMsg):
-    MESSAGE = u"Syntax error in input (details unknown)"
-
-class SyntaxErrorMsg_Line(ErrorMsg):
-    MESSASGE = u"Syntax error in input at '{value}' (type {type}) line {line}"
-
-class SyntaxErrorMsg_LineCol(ErrorMsg):
-    MESSAGE = u"Syntax error in input at '{value}' (type {type}) line {line} col {col}"
-
-class PlyplusException(Exception): pass
-
-class GrammarException(PlyplusException): pass
-
-class TokenizeError(PlyplusException): pass
-
-class ParseError(PlyplusException):
-    def __init__(self, errors):
-        self.errors = errors
-        super(ParseError, self).__init__(u'\n'.join(map(unicode, self.errors)))
 
 class RuleMods(object):
     EXPAND = '@'    # Expand all instances of rule
@@ -173,7 +144,7 @@ class ApplySubgrammars_Visitor(SVisitor):
         self.subgrammars = subgrammars
     def __default__(self, tree):
         for i, tok in enumerate(tree.tail):
-            if type(tok) == TokValue and tok.type in self.subgrammars:
+            if isinstance(tok, TokValue) and tok.type in self.subgrammars:
                 parsed_tok = self.subgrammars[tok.type].parse(tok)
                 assert parsed_tok.head == 'start'
                 tree.tail[i] = parsed_tok
@@ -317,7 +288,6 @@ class ExpandOper_Visitor(SimplifyGrammar_Visitor):
 
     def grammar(self, tree):
         if self._rules_to_add:
-            changed = True
             tree.tail += self._rules_to_add
             self._rules_to_add = []
             return True
@@ -462,16 +432,6 @@ class FilterTokens_Visitor(SVisitor):
     def __default__(self, tree):
         if len(tree.tail) > 1:
             tree.tail = filter(is_stree, tree.tail)
-
-class TokValue(Str):
-    def __new__(cls, s, type=None, line=None, column=None, pos_in_stream=None, index=None):
-        inst = Str.__new__(cls, s)
-        inst.type = type
-        inst.line = line
-        inst.column = column
-        inst.pos_in_stream = pos_in_stream
-        inst.index = index
-        return inst
 
 class LexerWrapper(object):
     def __init__(self, lexer, newline_tokens_names, newline_char='\n', ignore_token_names=()):
@@ -856,109 +816,3 @@ class _Grammar(object):
 
 
 
-class Engine_PLY_Callback(object):
-    start = "start"
-
-    def __init__(self):
-        self.tokens = []
-
-    @staticmethod
-    def t_error(t):
-        raise TokenizeError("Illegal character in input: '%s', line: %s, %s" % (t.value[:32], t.lineno, t.type))
-
-    p_error = NotImplemented
-
-class Engine_PLY(object):
-    def __init__(self, options, rules_to_flatten, rules_to_expand):
-        self.rules_to_flatten = rules_to_flatten
-        self.rules_to_expand = rules_to_expand
-        self.options = options
-
-        self.callback = Engine_PLY_Callback()
-        self.callback.p_error = self.p_error
-
-    def add_rule(self, rule_name, rule_def, self_expand):
-        rule_def = '%s\t: %s'%(rule_name, '\n\t| '.join(rule_def))
-        tree_class = self.options.tree_class
-        auto_filter_tokens = self.options.auto_filter_tokens
-
-        def p_rule(_, p):
-            subtree = []
-            for child in p.__getslice__(1, None):
-                if isinstance(child, tree_class) and (
-                           (                            child.head in self.rules_to_expand )
-                        or (child.head == rule_name and child.head in self.rules_to_flatten)
-                        ):
-                    # (EXPAND | FLATTEN) & mods -> here to keep tree-depth minimal, prevents unbounded tree-depth on
-                    #                              recursive rules.
-                    #           EXPAND1  & mods -> perform necessary expansions on children first to ensure we don't end
-                    #                              up expanding inside our parents if (after expansion) we have more
-                    #                              than one child.
-                    subtree.extend(child.tail)
-                else:
-                    subtree.append(child)
-
-            # Apply auto-filtering (remove 'punctuation' tokens)
-            if auto_filter_tokens and len(subtree) != 1:
-                subtree = list(filter(is_stree, subtree))
-
-            if len(subtree) == 1 and self_expand:
-                # Self-expansion: only perform on EXPAND and EXPAND1 rules
-                p[0] = subtree[0]
-            else:
-                p[0] = tree_class(rule_name, subtree, skip_adjustments=True)
-        p_rule.__doc__ = rule_def
-        setattr(self.callback, 'p_%s' % (rule_name,), types.MethodType(p_rule, self))
-
-    def add_token(self, name, value):
-        self.callback.tokens.append(name)
-        setattr(self.callback, 't_%s'%name, value)
-
-
-    def add_token_unless(self, name, value, unless_toks_dict, unless_toks_regexps):
-        def t_token(t):
-            if t.value in unless_toks_dict:
-                t.type = unless_toks_dict[t.value]
-            else:
-                t.type = name
-                for regexp, tokname in unless_toks_regexps:
-                    if regexp.match(t.value):
-                        t.type = tokname
-                        break
-            return t
-        t_token.__doc__ = value
-
-        self.add_token(name, t_token)
-
-
-    def build_lexer(self):
-        self.lexer = lex.lex(module=self.callback, reflags=re.UNICODE)
-
-    def build_parser(self, cache_file):
-        self.parser = yacc.yacc(module=self.callback, debug=self.options.debug, tabmodule=cache_file, errorlog=grammar_logger, outputdir=PLYPLUS_DIR)
-
-    def parse(self, text):
-        self.errors = []
-        tree = self.parser.parse(text, lexer=self.lexer, debug=self.options.debug)
-        if not tree:
-            self.errors.append(ErrorMsg(msg="Could not create parse tree!"))
-        if self.errors:
-            raise ParseError(self.errors)
-
-        return tree
-
-
-    def p_error(self, p):
-        # TODO: Move to callback?
-        if p:
-            if isinstance(p.value, TokValue):
-                err = SyntaxErrorMsg_LineCol(value=p.value, type=p.type, line=p.value.line, col=p.value.column)
-            else:
-                err = SyntaxErrorMsg_Line(value=p.value, type=p.type, line=p.lineno)
-        else:
-            err = SyntaxErrorMsg_Unknown()
-
-        if self.options.debug:
-            print(err)
-
-        self.errors.append(err)

@@ -15,9 +15,9 @@ try:
 except OSError:
     pass
 
-from .plyplus import Grammar, SVisitor, STransformer, is_stree
-
-from .plyplus import PlyplusException, GrammarException, TokenizeError, ParseError
+from .strees import SVisitor, STransformer, is_stree
+from .common import PlyplusException, GrammarException, TokenizeError, ParseError
+from .plyplus import Grammar
 
 from . import selector
 selector.install()

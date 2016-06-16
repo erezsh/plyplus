@@ -5,35 +5,8 @@ from copy import deepcopy
 from .stree_collection import STreeCollection
 
 from .utils import StringTypes, StringType, classify, _cache_0args
+from .common import Str, WeakPickleMixin
 
-
-class WeakPickleMixin(object):
-    """Prevent pickling of weak references to attributes"""
-
-    weak_attributes = (
-            'parent',
-        )
-
-    def __getstate__(self):
-        dict = self.__dict__.copy()
-
-        # Pickle weak references as hard references, pickle deals with circular references for us
-        for key, val in dict.items():
-            if isinstance(val, ref):
-                dict[key] = val()
-
-        return dict
-
-    def __setstate__(self, data):
-        self.__dict__.update(data)
-
-        # Convert hard references that should be weak to weak references
-        for key in data:
-            val = getattr(self, key)
-            if key in self.weak_attributes and val is not None:
-                setattr(self, key, ref(val))
-
-class Str(WeakPickleMixin, StringType): pass
 
 class STree(WeakPickleMixin, object):
     # __slots__ = 'head', 'tail', '_cache', 'parent', 'index_in_parent'
@@ -130,10 +103,10 @@ class STree(WeakPickleMixin, object):
         return not (self == other)
 
     def __getstate__(self):
-        dict = super(STree, self).__getstate__()
+        d = super(STree, self).__getstate__()
         # No point in pickling a cache...
-        dict.pop('_cache', None)
-        return dict
+        d.pop('_cache', None)
+        return d
 
     def __setstate__(self, data):
         super(STree, self).__setstate__(data)
