@@ -163,33 +163,29 @@ def _unescape_token_def(token_def):
     assert token_def[0] == "'" == token_def[-1]
     return token_def[1:-1].replace(r"\'", "'")
 
-class SimplifyTokenDefs_Visitor(SVisitor):
+def _simplify_tokendef(tokendef, tokendefs):
+    token_value = tokendef.tail[1]
+    if is_stree(token_value):
+        assert token_value.head == 'tokenvalue'
 
-    def __init__(self):
-        self.tokendefs = {}
+        regexp = ''.join( _unescape_token_def(d)
+                            if d.startswith("'")
+                            else _simplify_tokendef(tokendefs[d], tokendefs)
+                            for d in token_value.tail )
+        tokendef.tail = list(tokendef.tail) # can't assign to a tuple
+        tokendef.tail[1] = regexp
 
-    def visit(self, tree):
-        CollectTokenDefs_Visitor(self.tokendefs).visit(tree)
-        SVisitor.visit(self, tree)
+    return tokendef.tail[1]
 
-        for tokendef in self.tokendefs.values():
-            self._simplify_token(tokendef)
+def simplify_tokendefs(tree):
+    tokendefs = {}
+    CollectTokenDefs_Visitor(tokendefs).visit(tree)
 
-        return self.tokendefs
+    for tokendef in tokendefs.values():
+        _simplify_tokendef(tokendef, tokendefs)
 
-    def _simplify_token(self, tokendef):
-        token_value = tokendef.tail[1]
-        if is_stree(token_value):
-            assert token_value.head == 'tokenvalue'
+    return tokendefs
 
-            regexp = ''.join( _unescape_token_def(d)
-                                if d.startswith("'")
-                                else self._simplify_token(self.tokendefs[d])
-                                for d in token_value.tail )
-            tokendef.tail = list(tokendef.tail) # can't assign to a tuple
-            tokendef.tail[1] = regexp
-
-        return tokendef.tail[1]
 
 class NameAnonymousTokens_Visitor(SVisitor):
     ANON_TOKEN_ID = 'ANON'
@@ -649,7 +645,7 @@ class _Grammar(object):
         ExtractSubgrammars_Visitor(source_name, tab_filename, self.options).visit(grammar_tree)
         SimplifyGrammar_Visitor().visit(grammar_tree)
         ExpandOper_Visitor().visit(grammar_tree)
-        tokendefs = SimplifyTokenDefs_Visitor().visit(grammar_tree)
+        tokendefs = simplify_tokendefs(grammar_tree)
         NameAnonymousTokens_Visitor(tokendefs).visit(grammar_tree)
         grammar_list_and_code = GrammarTreeToList_Transformer().transform(grammar_tree)
 
