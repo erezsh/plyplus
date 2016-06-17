@@ -424,11 +424,6 @@ class SimplifySyntaxTree_Visitor(SVisitor):
             if to_remove:
                 tree.remove_kids_by_index(*to_remove)
 
-class FilterTokens_Visitor(SVisitor):
-    def __default__(self, tree):
-        if len(tree.tail) > 1:
-            tree.tail = filter(is_stree, tree.tail)
-
 class LexerWrapper(object):
     def __init__(self, lexer, newline_tokens_names, newline_char='\n', ignore_token_names=()):
         self.lexer = lexer
