@@ -21,6 +21,7 @@ from .common import TokValue, GrammarException, ParseError
 from .strees import STree, SVisitor, STransformer, is_stree, SVisitor_Recurse
 
 from .engine_ply import Engine_PLY
+from .engine_pearley import Engine_Pearley
 
 # -- Must!
 #TODO: Support States
@@ -373,7 +374,8 @@ class GrammarTreeToList_Transformer(STransformer):
 
     @staticmethod
     def rule(tree):
-        return ' '.join(tree.tail)
+        return tree.tail
+    #     return ' '.join(tree.tail)
 
     @staticmethod
     def ruledef(tree):
@@ -633,7 +635,8 @@ class _Grammar(object):
         self.lexer_postproc = None
         self._newline_value = '\n'
 
-        self.engine = Engine_PLY(self.options, self.rules_to_flatten, self.rules_to_expand)
+        # self.engine = Engine_PLY(self.options, self.rules_to_flatten, self.rules_to_expand)
+        self.engine = Engine_Pearley(self.options, self.rules_to_flatten, self.rules_to_expand)
 
         # -- Build Grammar --
         self.subgrammars = {}
