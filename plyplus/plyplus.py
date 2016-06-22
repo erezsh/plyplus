@@ -508,6 +508,7 @@ class GrammarOptions(object):
         self.tree_class = o.pop('tree_class', STree)
         self.cache_grammar = o.pop('cache_grammar', False)
         self.ignore_postproc = bool(o.pop('ignore_postproc', False))
+        self.engine = o.pop('engine', 'ply')
 
         if o:
             raise ValueError("Unknown options: %s" % o.keys())
@@ -635,8 +636,12 @@ class _Grammar(object):
         self.lexer_postproc = None
         self._newline_value = '\n'
 
-        # self.engine = Engine_PLY(self.options, self.rules_to_flatten, self.rules_to_expand)
-        self.engine = Engine_Pearley(self.options, self.rules_to_flatten, self.rules_to_expand)
+        engine_class = {
+            'ply': Engine_PLY,
+            'pearley': Engine_Pearley,
+        }[options.engine]
+
+        self.engine = engine_class(self.options, self.rules_to_flatten, self.rules_to_expand)
 
         # -- Build Grammar --
         self.subgrammars = {}
