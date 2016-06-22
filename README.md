@@ -1,4 +1,4 @@
-# PlyPlus - a friendly yet powerful LR-parser in Python.
+# PlyPlus - a friendly yet powerful parser library, written in Python.
 
 Plyplus is a general-purpose parser built on top of [PLY](http://www.dabeaz.com/ply/) (LALR(1)), and written in Python. Plyplus features a modern design, and focuses on simplicity without losing power.
 
@@ -21,6 +21,7 @@ Plyplus is a general-purpose parser built on top of [PLY](http://www.dabeaz.com/
  - Unicode support
  - Python 2.7, Python 3.3 and PyPy 1.9 compatible
  - Fully-working Python 2.x grammar included
+ - New: An experimental Earley-parser engine!
 
 ## Q & A
 

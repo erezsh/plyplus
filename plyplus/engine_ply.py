@@ -37,7 +37,7 @@ class Engine_PLY(object):
         self.errors = None
 
     def add_rule(self, rule_name, rule_def, self_expand):
-        rule_def = '%s\t: %s'%(rule_name, '\n\t| '.join(rule_def))
+        rule_def = '%s\t: %s'%(rule_name, '\n\t| '.join(map(' '.join, rule_def)))
         tree_class = self.options.tree_class
         auto_filter_tokens = self.options.auto_filter_tokens
 

@@ -138,7 +138,6 @@ decorators : decorator+ ;
   ?factor : add_symbol factor
     | binary_not
     | power
-    | molecule
     ;
 
   binary_not: TILDE factor;
