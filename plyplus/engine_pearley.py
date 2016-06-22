@@ -7,6 +7,17 @@ from . import pearley
 
 
 class Engine_Pearley(object):
+    """Pearley engine based on nearley.js implementation.
+
+    * Supports a much larger class of grammars
+    * Uses PLY's lexer for performance
+    * It is still much slower than PLY for the common case
+    * In some cases it's faster than PLY
+    * Ambiguous grammars may result in very long run-time
+
+    This is an experimental engine!
+    """
+
     def __init__(self, options, rules_to_flatten, rules_to_expand):
         self.engine_ply = Engine_PLY(options, rules_to_flatten, rules_to_expand)
 
