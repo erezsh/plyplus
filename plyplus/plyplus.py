@@ -508,7 +508,7 @@ class GrammarOptions(object):
         self.tree_class = o.pop('tree_class', STree)
         self.cache_grammar = o.pop('cache_grammar', False)
         self.ignore_postproc = bool(o.pop('ignore_postproc', False))
-        self.engine = o.pop('engine', 'pearley')
+        self.engine = o.pop('engine', 'ply')
 
         if o:
             raise ValueError("Unknown options: %s" % o.keys())

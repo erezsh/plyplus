@@ -1,3 +1,5 @@
+from utils import classify
+
 class MatchFailed(object):
     pass
 
@@ -59,11 +61,14 @@ class State(object):
 
         else:
             exp = self.rule.symbols[self.expect]
+            if isinstance(exp, dict):
+                return
 
-            for r in rules:
-                if r.name == exp and r not in added_rules:
+            for r in rules[exp]:
+                assert r.name == exp
+                if r not in added_rules:
                     if r.symbols:
-                        added_rules.append(r)
+                        added_rules.add(r)
                         # XXX Why is this??
                         State(r, 0, location).epsilon_closure(location, ind, table)
                     else:
@@ -97,8 +102,9 @@ class Parser(object):
     def __init__(self, rules, start=None):
         self.table = [[]]
         self.rules = [Rule(r['name'], r['symbols'], r.get('postprocess', None)) for r in rules]
+        self.rules_by_name = classify(self.rules, lambda r: r.name)
         self.start = start or self.rules[0].name
-        initial_rules = [r for r in self.rules if r.name == self.start]
+        initial_rules = set(self.rules_by_name[self.start])
         self.table[0] += [State(r, 0, 0) for r in initial_rules]
         self.advance_to(0, initial_rules)
         self.current = 0
@@ -106,7 +112,7 @@ class Parser(object):
 
     def advance_to(self, n, added_rules):
         for w, s in enumerate(self.table[n]):
-            s.process(n, w, self.table, self.rules, added_rules)
+            s.process(n, w, self.table, self.rules_by_name, added_rules)
 
     def feed(self, chunk):
         chunk_pos = 0
@@ -119,7 +125,7 @@ class Parser(object):
                     self.table[self.current + chunk_pos + 1].append(x)
 
 
-            added_rules = []
+            added_rules = set()
             self.advance_to(self.current + chunk_pos + 1, added_rules)
 
             if not self.table[-1]:
