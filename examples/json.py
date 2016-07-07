@@ -20,15 +20,11 @@ class JSON_Transformer(STransformer):
     """Transforms JSON AST into Python native objects."""
     number  = lambda self, node: float(node.tail[0])
     string  = lambda self, node: node.tail[0][1:-1]
-    boolean = lambda self, node: True if node.tail[0] == 'true' else False
+    boolean = lambda self, node: node.tail[0] == 'true'
     null    = lambda self, node: None
     array   = lambda self, node: node.tail
-    pair    = lambda self, node: { node.tail[0] : node.tail[1] }
-    def object(self, node):
-        result = {}
-        for i in node.tail:
-            result.update( i )
-        return result
+    pair    = lambda self, node: node.tail
+    object  = lambda self, node: dict(node.tail)
 
 def json_parse(json_string):
     """Parses a JSON string into native Python objects."""
