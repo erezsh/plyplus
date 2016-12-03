@@ -30,7 +30,7 @@ class GrammarException(PlyplusException):
 class ParseError(PlyplusException):
     def __init__(self, errors):
         self.errors = errors
-        super(ParseError, self).__init__(u'\n'.join(map(unicode, self.errors)))
+        super(ParseError, self).__init__(u'\n'.join(map(StringType, self.errors)))
 
 class TokenizeError(PlyplusException):
     pass

@@ -1,4 +1,4 @@
-from utils import classify
+from .utils import classify
 
 class MatchFailed(object):
     pass
