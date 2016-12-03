@@ -16,7 +16,7 @@ class SyntaxErrorMsg_Unknown(ErrorMsg):
     MESSAGE = u"Syntax error in input (details unknown)"
 
 class SyntaxErrorMsg_Line(ErrorMsg):
-    MESSASGE = u"Syntax error in input at '{value}' (type {type}) line {line}"
+    MESSAGE = u"Syntax error in input at '{value}' (type {type}) line {line}"
 
 class SyntaxErrorMsg_LineCol(ErrorMsg):
     MESSAGE = u"Syntax error in input at '{value}' (type {type}) line {line} col {col}"
