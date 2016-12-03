@@ -6,7 +6,7 @@ from getpass import getuser
 import os
 from tempfile import gettempdir
 
-__version__ = "0.7.2"
+__version__ = "0.7.3"
 
 PLYPLUS_DIR = os.path.join(gettempdir(), 'plyplus-' + getuser())
 
