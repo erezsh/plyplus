@@ -15,7 +15,7 @@ except ImportError:
     import pickle
 
 from . import __version__, PLYPLUS_DIR, grammar_parser
-from .utils import StringTypes, list_join
+from .utils import StringTypes, list_join, StringType
 from .common import TokValue, GrammarException, ParseError
 
 from .strees import STree, SVisitor, STransformer, is_stree, SVisitor_Recurse
@@ -615,9 +615,9 @@ class GrammarVerifier(SVisitor):
         undefined_tokens = self.tokens_used - self.tokens_defined
         undefined_rules = self.rules_used - self.rules_defined
         if undefined_tokens:
-            raise ParseError("Undefined tokens: %s" % undefined_tokens)
+            raise ParseError(["Undefined tokens: [%s]" % ', '.join(map(StringType, undefined_tokens))])
         if undefined_rules:
-            raise ParseError("Undefined rules: %s" % undefined_rules)
+            raise ParseError(["Undefined rules: [%s]" % ', '.join(map(StringType, undefined_rules))])
 
 
 
