@@ -1,5 +1,4 @@
 start: (NEWLINE|stmt)+;
-//module_header: string NEWLINE;
 
 //
 //     STATEMENTS
@@ -156,7 +155,6 @@ decorators : decorator+ ;
   ?power : molecule (DOUBLESTAR factor)? ;
 
   @molecule : atom
-//    | atom molecule_star
     | funccall
     | itemget
     | attrget
@@ -214,23 +212,19 @@ yield_expr : YIELD testlist? ;
 tuple : LPAR tuplemaker? RPAR ;
 @tuplemaker : test gen_for
             | test (COMMA | (COMMA test)+ COMMA? ) ;
-gen_for : FOR exprlist IN or_test gen_iter?  ;
-gen_if : IF stunted_test gen_iter?  ;
-gen_iter : gen_for | gen_if ;
+gen_for : (FOR exprlist IN stunted_testlist)+ gen_if?  ;
+gen_if : IF stunted_test;
  
 list : LSQB listmaker? RSQB ;
-@listmaker : test (list_for | (COMMA test)+? COMMA?) ;
-list_for : FOR exprlist IN stunted_testlist list_iter?  ;
-list_if : IF stunted_test list_iter?  ;
-list_iter : list_for | list_if ;
+set : LBRACE listmaker RBRACE;
+@listmaker : test (gen_for | (COMMA test)+? COMMA?) ;
 stunted_testlist : stunted_test ((COMMA stunted_test)+ COMMA?)? ;
 
 dict : LBRACE dictmaker? RBRACE ;
-@dictmaker : dict_item (dict_for | (COMMA dict_item)+? COMMA?) ;
+@dictmaker : dict_item (gen_for | (COMMA dict_item)+? COMMA?) ;
 dict_item: test COLON test;
-dict_for : FOR exprlist IN stunted_testlist list_iter?  ;
 
-set : LBRACE listmaker RBRACE;
+
 
 repr : BACKQUOTE testlist1 BACKQUOTE;
 

@@ -23,7 +23,7 @@ if os.name == 'nt':
     else:
         PYTHON_LIB = os.path.join(sys.prefix, 'Lib')
 else:
-    PYTHON_LIB = '/usr/lib/python2.7/'
+    PYTHON_LIB = [x for x in sys.path if x.endswith('%s.%s' % sys.version_info[:2])][0]
 
 class TestPythonG(unittest.TestCase):
     def setUp(self):
@@ -82,7 +82,11 @@ def eggs9():
         for f in files:
             f2 = os.path.join(path, f)
             logging.info( f2 )
-            g.parse(_read(f2))
+            try:
+                g.parse(_read(f2))
+            except:
+                print ('At ', f)
+                raise
 
         end = time.time()
         logging.info( "test_python_lib (%d files), time: %s secs"%(len(files), end-start) )

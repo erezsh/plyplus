@@ -301,8 +301,8 @@ class ExpandOper_Visitor(SimplifyGrammar_Visitor):
             # a : b c* d;
             #  --> in theory
             # a : b _c d;
-            # _c : c _c |;
-            #  --> in practice (much faster with PLY, approx x2)
+            # _c : _c c |;
+            #  --> in practice (a bit faster with PLY, approx 20%)
             # a : b _c d | b d;
             # _c : _c c | c;
             new_name = self._get_new_rule_name() + '_star'
