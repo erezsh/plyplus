@@ -129,7 +129,7 @@ class Parser(object):
             self.advance_to(self.current + chunk_pos + 1, added_rules)
 
             if not self.table[-1]:
-                raise Exception()
+                raise Exception('Error at line {t.line}:{t.column}'.format(t=chunk[chunk_pos]))
 
         self.current += chunk_pos
         self.results = list(self.finish())
