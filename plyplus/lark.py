@@ -203,11 +203,13 @@ class GrammarAnalyzer(object):
         self.states_idx = {}
 
         for s, la in self.states.items():
-            la = {k:(v[0], self.enum_rev[v[1]]) if v[0]=='shift' else v for k,v in la.items()}
+            la = {k:(ACTION_SHIFT, self.enum_rev[v[1]]) if v[0]=='shift' else v for k,v in la.items()}
             self.states_idx[ self.enum_rev[s] ] = la
 
 
         self.init_state_idx = self.enum_rev[self.init_state]
+
+ACTION_SHIFT = 0
 
 class ParseError(Exception):
     pass
@@ -218,8 +220,16 @@ class Parser(object):
         self.callback = callback
 
     def parse(self, seq):
+        seq = iter(seq)
+        states_idx = self.ga.states_idx
+
         stack = [(None, self.ga.init_state_idx)]
         i = 0
+        next_sym = next(seq)
+
+        def get_action(key):
+            state = stack[-1][1]
+            return states_idx[state][key]
 
         def reduce(rule):
             s = stack[-len(rule.expansion):]
@@ -229,24 +239,23 @@ class Parser(object):
             if rule.origin == 'start':
                 return res
 
-            state = stack[-1][1]
-            _action, new_state = self.ga.states_idx[state][rule.origin]
-            assert _action == 'shift'
+            _action, new_state = get_action(rule.origin)
+            assert _action == ACTION_SHIFT
             stack.append((res, new_state))
 
-        while i < len(seq):
-            state = stack[-1][1]
-            next_sym = seq[i]
+        # Main LALR-parser loop
+        try:
+            while True:
+                action, arg = get_action(next_sym.type)
 
-            action, arg = self.ga.states_idx[state][next_sym.type]
-            if action == 'shift':
-                i += 1
-                stack.append((next_sym, arg))
-            elif action == 'reduce':
-                reduce(arg)
-            else:
-                assert False
+                if action == ACTION_SHIFT:
+                    stack.append((next_sym, arg))
+                    next_sym = next(seq)
+                else:
+                    reduce(arg)
 
+        except StopIteration:
+            pass
 
         while len(stack) > 1:
             state = self.ga.enum[stack[-1][1]]
