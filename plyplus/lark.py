@@ -41,7 +41,7 @@ def bfs(initial, expand):
 
 
 def is_terminal(sym):
-    return sym.isupper() or sym == '$'
+    return sym.isupper() or sym[0] == '$'
 
 class _Rule(object):
     """
@@ -97,6 +97,7 @@ def update_set(set1, set2):
 class GrammarAnalyzer(object):
     def __init__(self, grammar):
         self.grammar = grammar
+        grammar.append(('$root', ['start', '$end']))
 
         self.rules = set()
         self.rules_by_origin = {k[0]: [] for k in grammar}
@@ -258,13 +259,12 @@ class Parser(object):
             pass
 
         while len(stack) > 1:
-            state = self.ga.enum[stack[-1][1]]
-            satisfied = [rp for rp in state if rp.is_satisfied]
-            if len(satisfied) != 1:
-                raise ParseError('Error reducing', satisfied)
-            reduce_rp ,= satisfied
-
-            res = reduce(reduce_rp.rule)
+            try:
+                _action, rule = get_action('$end')
+            except KeyError:
+                raise ParseError("Unexpected end of input. Expected: %s" % states_idx[stack[-1][1]].keys())
+            assert _action == 'reduce'
+            res = reduce(rule)
             if res:
                 break
 
