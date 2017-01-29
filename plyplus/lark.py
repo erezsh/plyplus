@@ -106,7 +106,6 @@ class GrammarAnalyzer(object):
             self.rules.add(r)
             self.rules_by_origin[origin].append(r)
 
-        print
         self.init_state = self.expand_rule('start')
 
     def expand_rule(self, rule):
@@ -188,6 +187,8 @@ class GrammarAnalyzer(object):
             for k, v in lookahead.items():
                 if len(v) > 1:
                     for x in v:
+                        # XXX resolving shift/reduce into shift, like PLY
+                        # Give a proper warning
                         if x[0] == 'shift':
                             lookahead[k] = [x]
 
@@ -220,8 +221,8 @@ class Parser(object):
         self.ga = ga
         self.callback = callback
 
-    def parse(self, seq):
-        seq = iter(seq)
+    def parse(self, seq2):
+        seq = iter(seq2)
         states_idx = self.ga.states_idx
 
         stack = [(None, self.ga.init_state_idx)]
@@ -230,7 +231,10 @@ class Parser(object):
 
         def get_action(key):
             state = stack[-1][1]
-            return states_idx[state][key]
+            try:
+                return states_idx[state][key]
+            except KeyError:
+                raise ParseError("Unexpected input %s. Expected: %s" % (key, states_idx[state].keys()))
 
         def reduce(rule):
             s = stack[-len(rule.expansion):]
@@ -259,10 +263,7 @@ class Parser(object):
             pass
 
         while len(stack) > 1:
-            try:
-                _action, rule = get_action('$end')
-            except KeyError:
-                raise ParseError("Unexpected end of input. Expected: %s" % states_idx[stack[-1][1]].keys())
+            _action, rule = get_action('$end')
             assert _action == 'reduce'
             res = reduce(rule)
             if res:
@@ -270,4 +271,58 @@ class Parser(object):
 
         assert stack == [(None, self.ga.init_state_idx)], len(stack)
         return res
+
+
+
+## Lexer Implementation
+
+class Token(object):
+    def __init__(self, type, value, lexpos):
+        self.type = type
+        self.value = value
+        self.lexpos = lexpos
+
+    def __repr__(self):
+        return 'Token(%s, %s, %s)' % (self.type, self.value, self.lexpos)
+
+
+import re
+LIMIT = 50 # Stupid named groups limit in python re
+class Lexer(object):
+    def __init__(self, tokens, callbacks):
+        self.tokens = tokens
+        self.callbacks = callbacks
+
+        self.tokens.sort(key=lambda x:len(x[1]), reverse=True)
+
+        self.mres = []
+        self.name_from_index = []
+        x = tokens
+        while x:
+            mre =  re.compile(u'|'.join(u'(?P<%s>%s)'%t for t in x[:LIMIT])) 
+            self.mres.append(mre)
+            self.name_from_index.append( {i:n for n,i in mre.groupindex.items()} )
+            x = x[LIMIT:]
+
+        self.pos = 0
+
+
+    def input(self, s):
+        self.text = s
+        self.pos = 0
+
+    def token(self):
+        i = 0
+        for mre in self.mres:
+            m = mre.match(self.text, self.pos)
+            if m:
+                value = m.group(0)
+                pos = self.pos
+                type_ = self.name_from_index[i][m.lastindex]
+                self.pos += len(value)
+                t = Token(type_, value, pos)
+                if t.type in self.callbacks:
+                    self.callbacks[t.type](t)
+                return t
+            i += 1
 

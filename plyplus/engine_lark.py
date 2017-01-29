@@ -1,8 +1,6 @@
 from .common import ParseError, ErrorMsg, TokValue
 from .strees import is_stree
 
-from .engine_ply import Engine_PLY
-
 from . import lark
 
 
@@ -12,8 +10,6 @@ class Callback:
 class Engine_Lark(object):
 
     def __init__(self, options, rules_to_flatten, rules_to_expand):
-        self.engine_ply = Engine_PLY(options, rules_to_flatten, rules_to_expand)
-
         self.rules_to_flatten = rules_to_flatten
         self.rules_to_expand = rules_to_expand
         self.options = options
@@ -24,6 +20,9 @@ class Engine_Lark(object):
 
         self.rules = []
         self.callback = Callback()
+
+        self.tokens = []
+        self.token_callbacks = {}
 
 
     def add_rule(self, rule_name, rule_def, self_expand):
@@ -65,14 +64,25 @@ class Engine_Lark(object):
             self.rules.append(rule)
 
     def add_token(self, name, value):
-        self.engine_ply.add_token(name, value)
+        self.tokens.append((name, value))
 
     def add_token_unless(self, name, value, unless_toks_dict, unless_toks_regexps):
-        self.engine_ply.add_token_unless(name, value, unless_toks_dict, unless_toks_regexps)
+        def t_token(t):
+            if t.value in unless_toks_dict:
+                t.type = unless_toks_dict[t.value]
+            else:
+                t.type = name
+                for regexp, tokname in unless_toks_regexps:
+                    if regexp.match(t.value):
+                        t.type = tokname
+                        break
+            return t
+
+        self.tokens.append((name, value))
+        self.token_callbacks[name] = t_token
 
     def build_lexer(self):
-        self.engine_ply.build_lexer()
-        self.lexer = self.engine_ply.lexer
+        self.lexer = lark.Lexer(self.tokens, self.token_callbacks)
 
     def build_parser(self, cache_file):
         g = lark.GrammarAnalyzer(self.rules)
