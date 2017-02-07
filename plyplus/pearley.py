@@ -1,4 +1,8 @@
-from .utils import classify
+from .utils import classify, StringTypes
+try:
+    xrange
+except NameError:
+    xrange = range
 
 class MatchFailed(object):
     pass
@@ -25,7 +29,7 @@ class State(object):
             self.is_literal = isinstance(self.expect_symbol, dict)
             if self.is_literal:
                 self.expect_symbol = self.expect_symbol['literal']
-            assert isinstance(self.expect_symbol, (str, unicode)), self.expect_symbol
+            assert isinstance(self.expect_symbol, StringTypes), self.expect_symbol
 
     def next_state(self, data):
         return State(self.rule, self.expect+1, self.reference, self.data + [data])
