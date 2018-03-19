@@ -1,3 +1,9 @@
+Note: PlyPlus is now under maintenance only.
+
+Please check out my new parsing library: https://github.com/erezsh/lark
+
+Lark is faster, more powerful, more stable, and has a lot more features.
+
 # PlyPlus - a friendly yet powerful parser library, written in Python.
 
 Plyplus is a general-purpose parser built on top of [PLY](http://www.dabeaz.com/ply/) (LALR(1)), and written in Python. Plyplus features a modern design, and focuses on simplicity without losing power.
