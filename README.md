@@ -74,7 +74,7 @@ A calculator is a bit like the "hello world" of parsers. Here is how calc.g migh
 This is all we need to get an AST. Now we can write:
 
     >>> import plyplus
-    >>> plyplus.Grammar("calc.g").parse("(1 + 2) * -3")
+    >>> plyplus.Grammar(open("calc.g")).parse("(1 + 2) * -3")
     start(mul(add(number(u'1'), add_symbol(u'+'), number(u'2')), mul_symbol(u'*'), neg(number(u'3'))))
 
 Notice that "atom" doesn't appear in the AST. That is because we muted it with the "@" prefix. Same was done with "add" and "mul" using the "?" prefix, which only mutes if the parser matches just one item.
